@@ -11,3 +11,7 @@ Extras:
    evaluation package
    trajectory optimization
    navigation module -> SLAM, odometry etc.
+
+git remote add origin_pipe_track https://github.com/metinegearal/auv_pipe_tracking.git
+git branch -M main
+git push -u origin_pipe_track main

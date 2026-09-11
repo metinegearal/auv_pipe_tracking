@@ -1,3 +1,6 @@
+
+![alt text](media/pipeTrack.gif)
+
 # Pipe Track ROS 2
 
 ROS 2 integration for pipe tracking with the HoloOcean underwater simulator. The workspace connects simulated camera and vehicle sensors to perception, pipe-point extraction, and vehicle control nodes.
@@ -49,6 +52,11 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
+
+Install the segmentation model to:
+auv_pipe_tracking/src/pipe_track_perception/pipe_track_perception/models/segment/best_pipe_unet35.pth
+https://drive.google.com/drive/folders/1qJhubrfIRAHTARl1LSkv2sRGxkRqvEHG?usp=sharing
+
 
 The requirements file installs HoloOcean directly from its Git repository. The HoloOcean map is not included in this repository; install or copy the shared map according to the map package's instructions when it becomes available.
 
@@ -110,3 +118,12 @@ After changing a package, rebuild only the affected package when possible:
 colcon build --symlink-install --packages-select <package-name>
 source install/setup.bash
 ```
+
+## Contact
+
+**Metin Ege Aral**  
+Software Lead, Autonomous Underwater Vehicles 
+* **Email:** [metinegearal@gmail.com](mailto:metinegearal@gmail.com)
+* **LinkedIn:** [linkedin.com/in/metin-ege-aral-55a492226](https://www.linkedin.com/in/metin-ege-aral-55a492226)
+
+*I am currently seeking remote internships and graduate research opportunities in autonomous systems, edge ML, and spatial perception. If you have any questions about this architecture or potential collaborations, feel free to reach out.*
