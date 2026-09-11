@@ -1,0 +1,13 @@
+base_tracking
+   latency -> unstable rotations -> perception/planning???
+ + Dont uses left in rotation    -> motion
+    
+
+navi_tracking
+   unlooked points at corners
+
+Extras:
+   finish signal -> behaivour_tree
+   evaluation package
+   trajectory optimization
+   navigation module -> SLAM, odometry etc.

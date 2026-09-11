@@ -1,0 +1,9 @@
+# HoloOcean is intentionally installed from Git rather than PyPI.
+git+https://github.com/byu-holoocean/HoloOcean
+
+numpy
+opencv-python
+Pillow
+torch
+torchvision
+segmentation-models-pytorch

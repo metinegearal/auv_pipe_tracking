@@ -1,0 +1,90 @@
+{
+    "name": "test_rgb_camera",
+    "world": "TestWorld",
+    "package_name": "BauRov",
+    "main_agent": "auv0",
+    "ticks_per_sec": 30,
+    "agents": [
+        {
+            "agent_name": "auv0",
+            "agent_type": "HoveringAUV",
+            "control_scheme": 0,
+            "location": [43.203, -64.463, -24.178],
+            "rotation": [0, 0, 180],
+            "sensors": [
+                {
+                    "sensor_type": "DVLSensor",
+                    "configuration": {
+                        "Elevation": 22.5,
+                        "DebugLines": false,
+                        "VelSigma": 0.001,
+                        "ReturnRange": true,
+                        "MaxRange": 50.0,
+                        "RangeSigma": 0.05
+                    }
+                },
+                {
+                    "sensor_type": "DepthSensor",
+                    "configuration": { "Sigma": 0.05 }
+                },
+                {
+                    "sensor_type": "MagnetometerSensor",
+                    "configuration": { "Sigma": 0.0003 }
+                },
+                {
+                    "sensor_type": "IMUSensor",
+                    "configuration": {
+                        "AngVelSigma": 0.0035,
+                        "AccelSigma": 0.03,
+                        "AngVelBiasSigma": 0.001,
+                        "AccelBiasSigma": 0.01
+                    }
+                },
+                { "sensor_type": "LocationSensor" },
+                {
+                    "sensor_type": "CameraSensor",
+                    "sensor_name": "DownCamera",
+                    "socket": "CameraLeftSocket",
+                    "rotation": [0, 90, 0],
+                    "location": [0, 0, -1],
+                    "configuration": {
+                        "CaptureWidth": 288, "CaptureHeight": 288, "FovAngle": 90.0,
+                        "TargetGamma": 1.0, "ExposureMethod": "AEM_Histogram", "ExposureCompensation": 1,
+                        "ShutterSpeed": 60.0, "ISO": 800.0, "Aperature": 2.0,
+                        "FocalDistance": 100.0, "DepthBlurAmount": 1.2, "DepthBlurRadius": 1.0,
+                        "BladeCount": 6, "DepthOfFieldMinFstop": 1.4, "WhiteTemp": 4800.0,
+                        "WhiteTint": 0.25, "BloomIntensity": 1.8, "LensFlareIntensity": 1.0,
+                        "ChromAberrIntensity": 1.0, "ChromAberrOffset": 0.8,
+                        "ExposureSpeedDown": 3.0, "ExposureSpeedUp": 2.0,
+                        "MotionBlurIntensity": 0.2, "MotionBlurMaxDistortion": 0.05,
+                        "MotionBlurMinObjectScreenSize": 2.0
+                    }
+                },
+                {
+                    "sensor_type": "CameraSensor",
+                    "sensor_name": "FrontCamera",
+                    "socket": "CameraRightSocket",
+                    "rotation": [0, 0, 0],
+                    "location": [0, 0, 0],
+                    "configuration": {
+                        "CaptureWidth": 288, "CaptureHeight": 288, "FovAngle": 90.0,
+                        "TargetGamma": 1.0, "ExposureMethod": "AEM_Histogram", "ExposureCompensation": 1,
+                        "ShutterSpeed": 60.0, "ISO": 800.0, "Aperature": 2.0,
+                        "FocalDistance": 100.0, "DepthBlurAmount": 1.2, "DepthBlurRadius": 1.0,
+                        "BladeCount": 6, "DepthOfFieldMinFstop": 1.4, "WhiteTemp": 4800.0,
+                        "WhiteTint": 0.25, "BloomIntensity": 1.8, "LensFlareIntensity": 1.0,
+                        "ChromAberrIntensity": 1.0, "ChromAberrOffset": 0.8,
+                        "ExposureSpeedDown": 3.0, "ExposureSpeedUp": 2.0,
+                        "MotionBlurIntensity": 0.2, "MotionBlurMaxDistortion": 0.05,
+                        "MotionBlurMinObjectScreenSize": 2.0
+                    }
+                },
+                {
+                    "sensor_type": "RangeFinderSensor",
+                    "socket": "COM",
+                    "sensor_name": "RangeFinder"
+                }
+            ]
+        }
+    ]
+}

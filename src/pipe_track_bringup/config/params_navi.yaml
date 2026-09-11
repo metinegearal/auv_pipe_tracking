@@ -1,0 +1,8 @@
+waypoint_control_node:
+  ros__parameters:
+    kp_yaw: 0.6
+    kp_dist: 0.75
+    max_yaw_thrust: 3.0
+    absolute_max_motor_signal: 40.0
+    yaw_deadband_deg: 15.0
+    dvl_active: true
