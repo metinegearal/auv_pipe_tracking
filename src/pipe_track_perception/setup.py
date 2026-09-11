@@ -25,7 +25,6 @@ setup(
     entry_points={
         'console_scripts': [
             'segmentation = pipe_track_perception.segmentation:main',
-            'planning = pipe_track_perception.planning:main',
         ],
     },
 )
