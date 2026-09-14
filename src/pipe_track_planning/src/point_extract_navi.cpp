@@ -2,6 +2,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <std_msgs/msg/float32.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
+#include <std_msgs/msg/bool.hpp> // <-- Add this for BT signals
 #include <nav_msgs/msg/odometry.hpp>
 #include <cv_bridge/cv_bridge.hpp>
 
@@ -20,6 +21,9 @@ public:
             "perception/yaw", 10, std::bind(&PointExtractNavi::yaw_callback, this, std::placeholders::_1));
 
         waypoint_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("/trajectory/waypoint", 10);
+        
+        // --- NEW: Publisher for the Behavior Tree ---
+        exploration_empty_pub_ = this->create_publisher<std_msgs::msg::Bool>("/planning/exploration_empty", 10);
 
         RCLCPP_INFO(this->get_logger(), "✅ point_extract_navi Started (Pure Map-Based)");
     }
@@ -33,7 +37,7 @@ private:
     void yaw_callback(const std_msgs::msg::Float32::SharedPtr msg) { yaw_ = msg->data; is_not_started_ = false; }
 
     void cam_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
-        if (is_stopped_ || is_not_started_ || current_position_.x == 0 && current_position_.y == 0) return;
+        if (is_stopped_ || is_not_started_ || (current_position_.x == 0 && current_position_.y == 0)) return;
 
         cv::Mat mask = cv_bridge::toCvCopy(msg, "mono8")->image;
         int h = mask.rows;
@@ -53,8 +57,12 @@ private:
         // Extract the final point from the map
         auto points_final = explorer_.get_scan_point();
         cv::Point2f target_point;
+        bool is_exploration_empty = false; // Default for BT
 
         if (!points_final.empty()) {
+            // We successfully extracted points. Exploration is officially running.
+            has_started_exploration_ = true; 
+            
             target_point = points_final[0];
             float closest_distance = cv::norm(target_point - current_position_);
             for (const auto& point : points_final) {
@@ -66,8 +74,22 @@ private:
             }
         } else {
             target_point = current_position_; 
-            RCLCPP_WARN(this->get_logger(), "No points found in map. Falling back to current position.");
+            
+            // --- NEW: Behavior Tree Logic ---
+            if (has_started_exploration_) {
+                // We HAD points before, but now we don't. Map is finished!
+                is_exploration_empty = true;
+                RCLCPP_WARN(this->get_logger(), "🏁 Map fully explored! Sending stop signal to BT.");
+            } else {
+                // We just started and haven't generated the first points yet.
+                RCLCPP_WARN(this->get_logger(), "Waiting for initial exploration points...");
+            }
         }
+
+        // Publish to Behavior Tree
+        std_msgs::msg::Bool bt_msg;
+        bt_msg.data = is_exploration_empty;
+        exploration_empty_pub_->publish(bt_msg);
 
         // Scale by MAP_RESOLUTION
         target_point.x *= explorer_.MAP_RESOLUTION;
@@ -105,11 +127,15 @@ private:
     double current_height_ = 0;
     bool is_stopped_ = false;
     bool is_not_started_ = true;
+    
+    // NEW: Track if we've successfully started the map building process
+    bool has_started_exploration_ = false;
 
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_cam_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr position_sub_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr height_sub_, sub_mag_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr waypoint_pub_;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr exploration_empty_pub_; // BT Publisher
 };
 
 int main(int argc, char** argv) {

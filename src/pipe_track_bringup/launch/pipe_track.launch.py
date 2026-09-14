@@ -33,5 +33,11 @@ def generate_launch_description():
             executable='point_extract',
             name='point_extract',
             parameters=[config_file]
+        ),
+        Node(
+            package='pipe_track_mission',
+            executable='behaviour_node',
+            name='behaviour_node',
+            parameters=[config_file]
         )
     ])

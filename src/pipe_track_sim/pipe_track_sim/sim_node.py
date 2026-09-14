@@ -17,9 +17,6 @@ Publishes:
 """
 
 import sys
-sys.path.append('/home/metin-ege/AIEngineering/RoboticFocus/HoloSystem')
-
-
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, qos_profile_sensor_data

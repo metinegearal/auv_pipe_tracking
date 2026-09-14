@@ -1,0 +1,17 @@
+<root BTCPP_format="4">
+    <BehaviorTree ID="MainTree">
+        <Fallback name="ReactiveMissionRoot">
+            
+            <!-- 1. Stop if constantly turning back -->
+            <Sequence name="CheckTurnBackAbort">
+                <Condition ID="IsConstantlyTurningBack"/>
+                <Action ID="StopAUV" reason="Lost pipe, continuous turn back"/>
+            </Sequence>
+
+            <!-- 2. Otherwise, keep running -->
+            <!-- <Action ID="KeepRunning"/> -->
+            <AlwaysSuccess/>
+            
+        </Fallback>
+    </BehaviorTree>
+</root>
