@@ -37,12 +37,18 @@ from cv_bridge import CvBridge
 import math
 import json
 
+
 def quaternion_from_euler(roll, pitch, yaw):
-    qx = math.sin(roll/2)*math.cos(pitch/2)*math.cos(yaw/2) - math.cos(roll/2)*math.sin(pitch/2)*math.sin(yaw/2)
-    qy = math.cos(roll/2)*math.sin(pitch/2)*math.cos(yaw/2) + math.sin(roll/2)*math.cos(pitch/2)*math.sin(yaw/2)
-    qz = math.cos(roll/2)*math.cos(pitch/2)*math.sin(yaw/2) - math.sin(roll/2)*math.sin(pitch/2)*math.cos(yaw/2)
-    qw = math.cos(roll/2)*math.cos(pitch/2)*math.cos(yaw/2) + math.sin(roll/2)*math.sin(pitch/2)*math.sin(yaw/2)
+    qx = math.sin(roll/2)*math.cos(pitch/2)*math.cos(yaw/2) - \
+        math.cos(roll/2)*math.sin(pitch/2)*math.sin(yaw/2)
+    qy = math.cos(roll/2)*math.sin(pitch/2)*math.cos(yaw/2) + \
+        math.sin(roll/2)*math.cos(pitch/2)*math.sin(yaw/2)
+    qz = math.cos(roll/2)*math.cos(pitch/2)*math.sin(yaw/2) - \
+        math.sin(roll/2)*math.sin(pitch/2)*math.cos(yaw/2)
+    qw = math.cos(roll/2)*math.cos(pitch/2)*math.cos(yaw/2) + \
+        math.sin(roll/2)*math.sin(pitch/2)*math.sin(yaw/2)
     return qx, qy, qz, qw
+
 
 def vortex_field(location):
     x, y, z = location
@@ -54,6 +60,7 @@ def vortex_field(location):
     dy = x / r_squared * strength
     dz = 0.2 * np.cos(0.1 * r_squared)
     return [3*dx, 3*dy, 3*dz]
+
 
 class HoloOceanROS2Bridge(Node):
     def __init__(self, holoocean_make_fn, step_limit=None):
@@ -68,16 +75,17 @@ class HoloOceanROS2Bridge(Node):
         # 1. Declare and get the parameter passed from the launch file
         self.declare_parameter('holoocean_config_path', '')
         config_path = self.get_parameter('holoocean_config_path').value
-        
+
         # 2. Read the JSON file into a dictionary
         if not config_path:
             self.get_logger().error("No holoocean config path provided!")
             return
-            
+
         with open(config_path, 'r') as f:
             scenario_cfg = json.load(f)
 
-        self.get_logger().info(f"Loaded HoloOcean Config for world: {scenario_cfg['world']}")
+        self.get_logger().info(
+            f"Loaded HoloOcean Config for world: {scenario_cfg['world']}")
 
         qos = QoSProfile(
             reliability=QoSReliabilityPolicy.RELIABLE,
@@ -87,15 +95,23 @@ class HoloOceanROS2Bridge(Node):
         # qos = qos_profile_sensor_data
 
         # Publishers
-        self.camera_pub = self.create_publisher(Image, 'holocean/camera/image_raw', qos)
-        self.cameraDown_pub = self.create_publisher(Image, 'holocean/cameraDown/image_raw', qos)
-        self.cam_info_pub = self.create_publisher(CameraInfo, 'holocean/camera/camera_info', qos)
-        self.depth_image_pub = self.create_publisher(Image, 'holocean/depth/image_raw', qos)
-        self.depth_scalar_pub = self.create_publisher(Float32, 'holocean/depth/scalar', qos)
-        self.range_finder_pub = self.create_publisher(Float32, 'holocean/distance/scalar', qos)
-        self.depth_distance_pub = self.create_publisher(Float32, 'holocean/depth/distance', qos)
+        self.camera_pub = self.create_publisher(
+            Image, 'holocean/camera/image_raw', qos)
+        self.cameraDown_pub = self.create_publisher(
+            Image, 'holocean/cameraDown/image_raw', qos)
+        self.cam_info_pub = self.create_publisher(
+            CameraInfo, 'holocean/camera/camera_info', qos)
+        self.depth_image_pub = self.create_publisher(
+            Image, 'holocean/depth/image_raw', qos)
+        self.depth_scalar_pub = self.create_publisher(
+            Float32, 'holocean/depth/scalar', qos)
+        self.range_finder_pub = self.create_publisher(
+            Float32, 'holocean/distance/scalar', qos)
+        self.depth_distance_pub = self.create_publisher(
+            Float32, 'holocean/depth/distance', qos)
         self.imu_pub = self.create_publisher(Imu, 'holocean/imu', qos)
-        self.mag_pub = self.create_publisher(MagneticField, 'holocean/mag', qos)
+        self.mag_pub = self.create_publisher(
+            MagneticField, 'holocean/mag', qos)
         self.dvl_pub = self.create_publisher(TwistStamped, 'holocean/dvl', qos)
         self.odom_pub = self.create_publisher(Odometry, 'holocean/odom', qos)
 
@@ -116,16 +132,13 @@ class HoloOceanROS2Bridge(Node):
         self.default_cam_info.binning_x = 0
         self.default_cam_info.binning_y = 0
 
-
-
-        self.command = [10,10,10,10,0,0,0,0]  # default command
+        self.command = [10, 10, 10, 10, 0, 0, 0, 0]  # default command
         self.sub_cmd = self.create_subscription(
             Float32MultiArray,
             '/holo/cmd',
             self.cmd_callback,
             10
         )
-
 
         # run loop in a background timer to keep rclpy spinning responsive
         self.get_logger().info('Starting HoloOcean bridge loop...')
@@ -138,8 +151,8 @@ class HoloOceanROS2Bridge(Node):
             self.get_logger().error(traceback.format_exc())
             raise
 
-
     # ✅ Add this callback:
+
     def cmd_callback(self, msg):
         self.command = list(msg.data)
         print("Received command:", self.command)
@@ -296,8 +309,10 @@ class HoloOceanROS2Bridge(Node):
             msg.header.frame_id = 'imu_link'
             # try various formats
             if isinstance(imu_data, dict):
-                lin_acc = imu_data.get('linear_acceleration') or imu_data.get('acc') or imu_data.get('accelerometer')
-                ang_vel = imu_data.get('angular_velocity') or imu_data.get('gyro')
+                lin_acc = imu_data.get('linear_acceleration') or imu_data.get(
+                    'acc') or imu_data.get('accelerometer')
+                ang_vel = imu_data.get(
+                    'angular_velocity') or imu_data.get('gyro')
                 ori = imu_data.get('orientation')
             else:
                 # maybe a numpy array [ax,ay,az, gx,gy,gz] or nested
@@ -314,9 +329,11 @@ class HoloOceanROS2Bridge(Node):
                     lin_acc = ang_vel = ori = None
 
             if lin_acc is not None:
-                msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z = [float(x) for x in lin_acc]
+                msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z = [
+                    float(x) for x in lin_acc]
             if ang_vel is not None:
-                msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z = [float(x) for x in ang_vel]
+                msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z = [
+                    float(x) for x in ang_vel]
             if ori is not None:
                 # accept list/tuple [x,y,z,w] or dict
                 if isinstance(ori, dict):
@@ -327,7 +344,8 @@ class HoloOceanROS2Bridge(Node):
                 else:
                     q = list(ori)
                     if len(q) >= 4:
-                        msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w = [float(x) for x in q[:4]]
+                        msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w = [
+                            float(x) for x in q[:4]]
             self.imu_pub.publish(msg)
         except Exception as e:
             self.get_logger().error("Failed to publish IMU: %s" % str(e))
@@ -416,7 +434,8 @@ class HoloOceanROS2Bridge(Node):
             msg.child_frame_id = 'base_link'
             # accept dict or array
             if isinstance(loc_data, dict):
-                pos = loc_data.get('position') or loc_data.get('pos') or loc_data.get('location')
+                pos = loc_data.get('position') or loc_data.get(
+                    'pos') or loc_data.get('location')
                 ori = loc_data.get('orientation')
                 vel = loc_data.get('velocity')
             else:
@@ -444,11 +463,15 @@ class HoloOceanROS2Bridge(Node):
                 else:
                     q = list(ori)
                     if len(q) >= 4:
-                        msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w = [float(x) for x in q[:4]]
+                        msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w = [
+                            float(x) for x in q[:4]]
             if vel is not None:
-                msg.twist.twist.linear.x = float(vel[0]) if len(vel) > 0 else 0.0
-                msg.twist.twist.linear.y = float(vel[1]) if len(vel) > 1 else 0.0
-                msg.twist.twist.linear.z = float(vel[2]) if len(vel) > 2 else 0.0
+                msg.twist.twist.linear.x = float(
+                    vel[0]) if len(vel) > 0 else 0.0
+                msg.twist.twist.linear.y = float(
+                    vel[1]) if len(vel) > 1 else 0.0
+                msg.twist.twist.linear.z = float(
+                    vel[2]) if len(vel) > 2 else 0.0
 
             self.odom_pub.publish(msg)
         except Exception as e:
@@ -460,7 +483,8 @@ class HoloOceanROS2Bridge(Node):
         Run HoloOcean loop inside context manager. Blocking until finished or step_limit reached.
         """
         # Import holoocean lazily to avoid import-time errors if not installed
-        holoocean = self.holoocean_make_fn.__self__ if hasattr(self.holoocean_make_fn, '__self__') else None
+        holoocean = self.holoocean_make_fn.__self__ if hasattr(
+            self.holoocean_make_fn, '__self__') else None
         # But we were passed holoocean.make, so call it directly
         self.get_logger().info("Entering holoocean.make context...")
         steps = 0
@@ -478,7 +502,8 @@ class HoloOceanROS2Bridge(Node):
                     try:
                         try:
                             # Camera: expect HxWxC (RGB)
-                            cam = state.get("FrontCamera", None) if isinstance(state, dict) else None
+                            cam = state.get("FrontCamera", None) if isinstance(
+                                state, dict) else None
                             if cam is None:
                                 # maybe state itself is an array? try attribute
                                 cam = getattr(state, "FrontCamera", None)
@@ -491,7 +516,8 @@ class HoloOceanROS2Bridge(Node):
 
                         try:
                             # Camera: expect HxWxC (RGB)
-                            cam = state.get("DownCamera", None) if isinstance(state, dict) else None
+                            cam = state.get("DownCamera", None) if isinstance(
+                                state, dict) else None
                             if cam is None:
                                 # maybe state itself is an array? try attribute
                                 cam = getattr(state, "DownCamera", None)
@@ -504,46 +530,51 @@ class HoloOceanROS2Bridge(Node):
 
                         # depth = compute_stereo_depth(state.get("DownCamera", None), state.get("FrontCamera", None), focal_length_px=256, baseline_meters=0.5)
                         # self._publish_depth(depth)
-                        
+
                     except Exception:
                         self.get_logger().debug("camera publish failed: %s" % traceback.format_exc())
 
-
                     try:
-                        range_finder = state.get("RangeFinder", None) if isinstance(state, dict) else getattr(state, "RangeFinder", None)
+                        range_finder = state.get("RangeFinder", None) if isinstance(
+                            state, dict) else getattr(state, "RangeFinder", None)
                         self._publish_range_finder(range_finder)
                     except Exception:
                         self.get_logger().debug("range finder publish failed: %s" % traceback.format_exc())
 
                     try:
-                        dvl = state.get("DVLSensor", None) if isinstance(state, dict) else getattr(state, "DVLSensor", None)
-                        #print(dvl)
+                        dvl = state.get("DVLSensor", None) if isinstance(
+                            state, dict) else getattr(state, "DVLSensor", None)
+                        # print(dvl)
                         self._publish_dvl(dvl)
                     except Exception:
                         self.get_logger().debug("dvl failed: %s" % traceback.format_exc())
 
                     try:
-                        imu = state.get("IMUSensor", None) if isinstance(state, dict) else getattr(state, "IMUSensor", None)
+                        imu = state.get("IMUSensor", None) if isinstance(
+                            state, dict) else getattr(state, "IMUSensor", None)
                         self._publish_imu(imu)
                     except Exception:
                         self.get_logger().debug("imu failed: %s" % traceback.format_exc())
 
                     try:
-                        depth = state.get("DepthSensor", None) if isinstance(state, dict) else getattr(state, "DepthSensor", None)
-                        #print(depth)
+                        depth = state.get("DepthSensor", None) if isinstance(
+                            state, dict) else getattr(state, "DepthSensor", None)
+                        # print(depth)
                         self._publish_depth(depth)
                     except Exception:
                         self.get_logger().debug("depth failed: %s" % traceback.format_exc())
 
                     try:
-                        mag = state.get("MagnetometerSensor", None) if isinstance(state, dict) else getattr(state, "MagnetometerSensor", None)
-                        #print(mag)
+                        mag = state.get("MagnetometerSensor", None) if isinstance(
+                            state, dict) else getattr(state, "MagnetometerSensor", None)
+                        # print(mag)
                         self._publish_mag(mag)
                     except Exception:
                         self.get_logger().debug("mag failed: %s" % traceback.format_exc())
 
                     try:
-                        loc = state.get("LocationSensor", None) if isinstance(state, dict) else getattr(state, "LocationSensor", None)
+                        loc = state.get("LocationSensor", None) if isinstance(
+                            state, dict) else getattr(state, "LocationSensor", None)
                         current_velocity = vortex_field(loc)
                         env.set_ocean_currents('auv0', current_velocity)
                         self._publish_location(loc)
@@ -560,6 +591,7 @@ class HoloOceanROS2Bridge(Node):
                 self.get_logger().error(traceback.format_exc())
             finally:
                 self.get_logger().info("HoloOcean context exited after %d steps." % steps)
+
 
 def main(args=None):
     import holoocean  # ensure holoocean is available
