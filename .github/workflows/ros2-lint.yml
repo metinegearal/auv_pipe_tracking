@@ -35,5 +35,5 @@ jobs:
         continue-on-error: true
         run: |
           source /opt/ros/jazzy/setup.bash
-          ament_clang_format --check src/
+          ament_clang_format src/
         shell: bash

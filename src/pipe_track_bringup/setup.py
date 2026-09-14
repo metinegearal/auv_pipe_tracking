@@ -1,5 +1,5 @@
-import os
 from glob import glob
+import os
 
 from setuptools import find_packages, setup
 
@@ -21,7 +21,10 @@ setup(
     zip_safe=True,
     maintainer='metin-ege',
     maintainer_email='metinegearal@gmail.com',
-    description='Bringup package for the AUV pipe tracking system, containing launch and config files.',
+    description=(
+        'Bringup package for the AUV pipe tracking system, '
+        'containing launch and config files.'
+    ),
     license='MIT',
     extras_require={
         'test': [

@@ -1,36 +1,39 @@
-
 import cv2
+from cv_bridge import CvBridge
 import numpy as np
 import rclpy
-import segmentation_models_pytorch as smp
-import torch
-from cv_bridge import CvBridge
 from rclpy.node import Node
+import segmentation_models_pytorch as smp
 from sensor_msgs.msg import Image, MagneticField
 from std_msgs.msg import Bool, Float32
+import torch
 
 
 class ObjectSegmentation(Node):
+
     def __init__(self):
         super().__init__('object_segmentation_node')
 
         # --- 1. SETUP NEURAL NETWORK ONCE ---
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu")
-        self.get_logger().info(f"Loading UNet model on: {self.device}")
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.get_logger().info(f'Loading UNet model on: {self.device}')
 
         self.model = smp.Unet(
-            encoder_name="resnet34",
+            encoder_name='resnet34',
             encoder_weights=None,
             in_channels=3,
             classes=1,
         )
 
-        weight_path = "/home/metin-ege/AIEngineering/RoboticFocus/HoloSystem/pipe_track_ros2/src/pipe_track_perception/pipe_track_perception/models/segment/best_pipe_unet35.pth"
+        weight_path = (
+            '/home/metin-ege/AIEngineering/RoboticFocus/HoloSystem/'
+            'pipe_track_ros2/src/pipe_track_perception/'
+            'pipe_track_perception/models/segment/best_pipe_unet35.pth'
+        )
         self.model.load_state_dict(torch.load(
             weight_path, map_location=self.device))
         self.model.to(self.device)  # Force model to GPU
-        self.model.eval()           # Set to evaluation mode
+        self.model.eval()  # Set to evaluation mode
 
         # Pre-allocate kernel for OpenCV morphology to save CPU cycles
         self.morph_kernel = np.ones((10, 10), np.uint8)
@@ -52,7 +55,7 @@ class ObjectSegmentation(Node):
         self.isRecording = False
         self.is_stopped = False
 
-        self.get_logger().info("✅ segmentation_node Started")
+        self.get_logger().info('✅ segmentation_node Started')
 
     def magnetometer_callback(self, msg):
         self.magnet = [msg.magnetic_field.x,
@@ -89,7 +92,7 @@ class ObjectSegmentation(Node):
 
     def cam_callback(self, msg):
         if self.is_stopped or self.is_not_started:
-            print("Segmentation stopped, ignoring frame.")
+            print('Segmentation stopped, ignoring frame.')
             return
 
         # Forward the most recent yaw synchronized with this frame
@@ -105,7 +108,7 @@ class ObjectSegmentation(Node):
             if not self.isRecording:
                 self.record_pub.publish(Bool(data=True))
                 self.isRecording = True
-            self.get_logger().warn("Low pipe detection confidence, ignoring frame.")
+            self.get_logger().warn('Low pipe detection confidence, ignoring frame.')
 
             # Assuming goByPinger is defined elsewhere in your class
             if hasattr(self, 'goByPinger'):
@@ -123,7 +126,7 @@ class ObjectSegmentation(Node):
             mask = cv2.drawContours(
                 mask2, [largest_contour], -1, 255, thickness=cv2.FILLED)
 
-        mask_img = self.bridge.cv2_to_imgmsg(mask, encoding="mono8")
+        mask_img = self.bridge.cv2_to_imgmsg(mask, encoding='mono8')
         mask_img.header = msg.header
         self.mask_pub.publish(mask_img)
 

@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
-import rclpy
 from nav_msgs.msg import Odometry
+import rclpy
 from rclpy.node import Node
 
 
 class MetricsNode(Node):
+
     def __init__(self):
         super().__init__('metrics_node')
 
