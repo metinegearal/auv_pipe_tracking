@@ -41,7 +41,7 @@ private:
 
     double yaw_ = 0.0;
     cv::Point2f world_point_{0, 0};
-    double SAFE_FRAME_ = 0.8;
+    double SAFE_FRAME_ = 0.9;
     double ALPHA_ = 0.1;
 
     std::vector<cv::Point2f> actual_path_;
