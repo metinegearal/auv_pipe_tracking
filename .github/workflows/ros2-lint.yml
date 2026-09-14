@@ -1,0 +1,34 @@
+name: ROS 2 Linter Checks
+
+# This makes the action run every time a PR is opened targeting 'main'
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint_code:
+    name: Ament Linters
+    runs-on: ubuntu-24.04
+    
+    # We run this inside the official ROS 2 Jazzy Docker container!
+    container:
+      image: ros:jazzy-ros-base
+      
+    steps:
+      # 1. Pull your code into the container
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Install the ament linters
+      - name: Install Linters
+        run: |
+          apt-get update
+          apt-get install -y python3-ament-flake8 python3-ament-clang-format
+
+      # 3. Run Flake8 for Python (Errors if PEP 8 is violated)
+      - name: Run ament_flake8 (Python)
+        run: ament_flake8 src/
+
+      # 4. Run Clang Format for C++ (Errors if C++ style is violated)
+      - name: Run ament_clang_format (C++)
+        run: ament_clang_format --check src/
