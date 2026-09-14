@@ -25,14 +25,12 @@ jobs:
 
       # FIX 2: Source the ROS 2 environment before running the commands
       - name: Run ament_flake8 (Python)
-        continue-on-error: true
         run: |
           source /opt/ros/jazzy/setup.bash
           ament_flake8 src/
         shell: bash
 
       - name: Run ament_clang_format (C++)
-        continue-on-error: true
         run: |
           source /opt/ros/jazzy/setup.bash
           ament_clang_format src/
