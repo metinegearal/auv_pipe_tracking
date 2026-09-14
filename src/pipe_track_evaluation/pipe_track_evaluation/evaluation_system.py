@@ -1,8 +1,7 @@
-import rclpy
-from rclpy.node import Node
-from nav_msgs.msg import Odometry
-import math
 import matplotlib.pyplot as plt
+import rclpy
+from nav_msgs.msg import Odometry
+from rclpy.node import Node
 
 
 class MetricsNode(Node):

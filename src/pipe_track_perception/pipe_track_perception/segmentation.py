@@ -1,17 +1,13 @@
-from datetime import datetime, timedelta
-import sys
 
+import cv2
+import numpy as np
 import rclpy
+import segmentation_models_pytorch as smp
+import torch
+from cv_bridge import CvBridge
 from rclpy.node import Node
 from sensor_msgs.msg import Image, MagneticField
 from std_msgs.msg import Bool, Float32
-from cv_bridge import CvBridge
-
-import numpy as np
-import cv2
-
-import segmentation_models_pytorch as smp
-import torch
 
 
 class ObjectSegmentation(Node):

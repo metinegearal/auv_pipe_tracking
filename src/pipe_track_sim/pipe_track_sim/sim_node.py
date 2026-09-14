@@ -16,26 +16,21 @@ Publishes:
  - /holocean/odom                     (nav_msgs/Odometry)
 """
 
-import sys
-import rclpy
-from rclpy.node import Node
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, qos_profile_sensor_data
-
-import numpy as np
-import time
-import traceback
-
-from sensor_msgs.msg import Image, CameraInfo, Imu, MagneticField
-from std_msgs.msg import Float32, Header, Float32MultiArray
-from geometry_msgs.msg import TwistStamped, Vector3, Quaternion, Pose, Point
-from nav_msgs.msg import Odometry
-
-# cv_bridge for numpy <-> ROS Image
-from cv_bridge import CvBridge
-
+import json
 # Helper quaternion conversion
 import math
-import json
+import traceback
+
+import numpy as np
+import rclpy
+# cv_bridge for numpy <-> ROS Image
+from cv_bridge import CvBridge
+from geometry_msgs.msg import TwistStamped
+from nav_msgs.msg import Odometry
+from rclpy.node import Node
+from rclpy.qos import QoSHistoryPolicy, QoSProfile, QoSReliabilityPolicy
+from sensor_msgs.msg import CameraInfo, Image, Imu, MagneticField
+from std_msgs.msg import Float32, Float32MultiArray, Header
 
 
 def quaternion_from_euler(roll, pitch, yaw):
