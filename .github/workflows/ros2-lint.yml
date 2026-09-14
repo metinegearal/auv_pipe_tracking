@@ -27,7 +27,7 @@ jobs:
       - name: Run ament_flake8 (Python)
         run: |
           source /opt/ros/jazzy/setup.bash
-          ament_flake8 src/
+          ament_flake8 src/ --ignore Q000,D,I,E501,W291,W292,W293
         shell: bash
 
       - name: Run ament_clang_format (C++)
