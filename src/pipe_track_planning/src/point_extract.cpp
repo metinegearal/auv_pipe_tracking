@@ -125,7 +125,6 @@ private:
         std::string filename = "/home/metin-ege/AIEngineering/RoboticFocus/HoloSystem/results/debug_" 
                              + std::to_string(msg->header.stamp.sec) + "_" 
                              + std::to_string(msg->header.stamp.nanosec) + ".jpg";
-        cv::imwrite(filename, debug_img);
         
         cv::imshow("Segmentation Debug", debug_img);
         cv::waitKey(1);

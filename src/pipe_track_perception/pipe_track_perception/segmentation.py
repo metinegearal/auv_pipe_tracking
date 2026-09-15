@@ -99,15 +99,8 @@ class ObjectSegmentation(Node):
         h, w = mask.shape
         
         filness_ratio = np.sum(mask > 0) / (w * h)
-        if filness_ratio < 0.0025:  
-            if not self.isRecording:
-                self.record_pub.publish(Bool(data=True)) 
-                self.isRecording = True
-            self.get_logger().warn("Low pipe detection confidence, ignoring frame.")
-            
-            # Assuming goByPinger is defined elsewhere in your class
-            if hasattr(self, 'goByPinger'):
-                self.goByPinger()
+        if filness_ratio < 0.0025:
+            self.get_logger().warn(f'Low pipe detection confidence, ignoring frame. filness_ratio={filness_ratio:.5f}')
             return
 
         # Use pre-allocated kernel

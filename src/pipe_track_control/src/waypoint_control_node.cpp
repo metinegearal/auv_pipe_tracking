@@ -30,12 +30,12 @@ public:
         this->get_parameter("kp_dist", kp_dist_);
         this->get_parameter("dvl_active", dvl_active_);
 
-        waypoint_ = {0.0, 0.0, -21.0};
-        magnet_ = {0.0, 0.0, 0.0};
-        obstacles_.resize(9, 0.0);
-        motor_command_.resize(8, 0.0);
-        last_base_command_.resize(8, 0.0);
-        last_motor_command_.resize(8, 0.0);
+    waypoint_ = {0.0, 0.0, -26.0};
+    magnet_ = {0.0, 0.0, 0.0};
+    obstacles_.resize(9, 0.0);
+    motor_command_.resize(8, 0.0);
+    last_base_command_.resize(8, 0.0);
+    last_motor_command_.resize(8, 0.0);
 
         // Publishers
         target_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("/holo/cmd", 10);
