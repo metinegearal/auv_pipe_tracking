@@ -1,0 +1,25 @@
+🏁 Mission complete received. Evaluating...
+================ TRACKING METRICS REPORT ================
+1. Cross-Track Error (RMSE)   : 0.784 m
+2. Max Cross-Track Error       : 2.809 m
+3. Mean Velocity (Momentum)    : 0.339 ± 0.157 m/s
+4. Mean Heading Error          : 144.72 deg
+5. Terminal Position Error     : 0.452 m
+Mission Execution Time      : 139.5 s
+=========================================================
+
+================ TRACKING METRICS REPORT ================
+[evaluation_system-6] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:423
+[evaluation_system-6] [INFO] [1789458962.074958575] [evaluation_system]: 1. Cross-Track Error (RMSE)   : 1.297 m
+[evaluation_system-6] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:423
+[evaluation_system-6] [INFO] [1789458962.076898990] [evaluation_system]: 2. Max Cross-Track Error       : 2.808 m
+[evaluation_system-6] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:423
+[evaluation_system-6] [INFO] [1789458962.078287404] [evaluation_system]: 3. Mean Velocity (Momentum)    : 0.395 ± 0.159 m/s
+[evaluation_system-6] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:423
+[evaluation_system-6] [INFO] [1789458962.079591583] [evaluation_system]: 4. Mean Heading Error          : 140.42 deg
+[evaluation_system-6] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:423
+[evaluation_system-6] [INFO] [1789458962.081155261] [evaluation_system]: 5. Terminal Position Error     : 0.178 m
+[evaluation_system-6] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:423
+[evaluation_system-6] [INFO] [1789458962.082602361] [evaluation_system]:    Mission Execution Time      : 107.1 s
+[evaluation_system-6] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:423
+[evaluation_system-6] [INFO] [1789458962.084024853] [evaluation_system]: =========================================================
