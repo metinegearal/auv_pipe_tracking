@@ -1,0 +1,37 @@
+name: ROS 2 Linter Checks
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint_code:
+    name: Ament Linters
+    runs-on: ubuntu-24.04
+    
+    # Run inside the official ROS 2 Jazzy Docker container
+    container:
+      image: ros:jazzy-ros-base
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # FIX 1: Use the official ROS 2 Jazzy package names
+      - name: Install Linters
+        run: |
+          apt-get update
+          apt-get install -y ros-jazzy-ament-flake8 ros-jazzy-ament-clang-format
+
+      # FIX 2: Source the ROS 2 environment before running the commands
+      - name: Run ament_flake8 (Python)
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          ament_flake8 src/
+        shell: bash
+
+      - name: Run ament_clang_format (C++)
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          ament_clang_format src/
+        shell: bash

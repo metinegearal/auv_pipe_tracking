@@ -1,0 +1,17 @@
+<root BTCPP_format="4">
+    <BehaviorTree ID="MainTree">
+        <Fallback name="MapMissionRoot">
+            
+            <!-- 1. Stop if no points left -->
+            <Sequence name="CheckExplorationComplete">
+                <Condition ID="IsExplorationEmpty"/>
+                <Action ID="StopAUV" reason="Map fully explored"/>
+            </Sequence>
+
+            <!-- 2. Otherwise, keep running (Return running so the tree doesn't exit) -->
+            <!-- <Action ID="KeepRunning"/> -->
+            <AlwaysSuccess/>
+            
+        </Fallback>
+    </BehaviorTree>
+</root>
