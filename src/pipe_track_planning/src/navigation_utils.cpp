@@ -135,4 +135,85 @@ std::tuple<double, cv::Point, cv::Mat, cv::Mat> get_weighted_pipe_navigation(
   return {final_angle_deg, best_point, clean_skeleton, weight_map};
 }
 
+
+  MultiNavResult get_multi_pipe_navigation(
+    const cv::Mat & mask_image, 
+    const std::vector<int>& look_aheads, 
+    double angle_weight, 
+    bool use_skeleton)
+  {
+    int center_x = mask_image.cols / 2 - 20;
+    int center_y = mask_image.rows / 2 + 30;
+
+    // 1. Heavy CV operations happen ONLY ONCE
+    cv::Mat binary_mask, clean_skeleton;
+    cv::threshold(mask_image, binary_mask, 127, 255, cv::THRESH_BINARY);
+    clean_skeleton = cv::Mat::zeros(binary_mask.size(), CV_8UC1);
+    std::vector<cv::Point> points;
+
+    if (use_skeleton) {
+      cv::Mat skeleton;
+      skeletonize(binary_mask, skeleton); // Assuming your custom skeletonize is in scope
+
+      std::vector<std::vector<cv::Point>> contours;
+      cv::findContours(skeleton, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+
+      if (!contours.empty()) {
+        auto largest_contour = std::max_element(
+          contours.begin(), contours.end(),
+          [](const std::vector<cv::Point> & a, const std::vector<cv::Point> & b) {
+            return cv::arcLength(a, false) < cv::arcLength(b, false);
+          });
+        cv::drawContours(
+          clean_skeleton, std::vector<std::vector<cv::Point>>{*largest_contour}, -1, cv::Scalar(255), 1);
+        cv::findNonZero(clean_skeleton, points);
+      }
+    } else {
+      binary_mask.copyTo(clean_skeleton);
+      cv::findNonZero(clean_skeleton, points);
+    }
+
+    // 2. Initialize tracking variables for ALL look-aheads
+    size_t num_targets = look_aheads.size();
+    std::vector<cv::Point> best_points(num_targets, cv::Point(center_x, center_y));
+    std::vector<double> best_costs(num_targets, std::numeric_limits<double>::max());
+    std::vector<double> final_angles(num_targets, 0.0);
+
+    if (points.empty()) {
+      return {final_angles, best_points, clean_skeleton};
+    }
+
+    // 3. Single iteration over pixels
+    for (const auto& pt : points) {
+      double dx = pt.x - center_x;
+      double dy = center_y - pt.y; // Image Y is inverted
+      
+      // Cache the math so we don't recalculate it for every lookahead
+      double dist = std::hypot(dx, dy);
+      double angle = std::abs(std::atan2(dx, dy));
+
+      // Evaluate this pixel against all requested look-ahead distances
+      for (size_t i = 0; i < num_targets; ++i) {
+        double cost_dist = std::abs(dist - look_aheads[i]);
+        double cost_angle = angle * look_aheads[i] * angle_weight;
+        double total_cost = cost_dist + cost_angle;
+
+        if (total_cost < best_costs[i]) {
+          best_costs[i] = total_cost;
+          best_points[i] = pt;
+        }
+      }
+    }
+
+    // 4. Compute final angles based on the winning points
+    for (size_t i = 0; i < num_targets; ++i) {
+      double tdx = best_points[i].x - center_x;
+      double tdy = center_y - best_points[i].y;
+      final_angles[i] = std::atan2(tdx, tdy) * 180.0 / M_PI;
+    }
+
+    return {final_angles, best_points, clean_skeleton};
+  }
+
+
 }  // namespace navigation_utils

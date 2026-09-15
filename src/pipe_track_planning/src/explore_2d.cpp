@@ -15,6 +15,8 @@ double Explore2D::expSmooth(double point, std::optional<double> old_value)
 std::pair<cv::Point2f, int> Explore2D::camera_to_world_coordinates(
   double px, double py, double depth, double fov, cv::Size img_size)
 {
+  (void)fov;
+
   auto local_pt = math_utils::point_from_depth({px, py}, yaw_, depth, true);
   int status = 1;
 

@@ -195,12 +195,8 @@ private:
     for (size_t i = 0; i < 3; ++i) direction[i] = target[i] - current_position_[i];
     double distance = std::sqrt(
       direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2]);
-    RCLCPP_INFO(
-      this->get_logger(),
-      "Distance to waypoint: %.2f, Target: (%.2f, %.2f, %.2f), Current: (%.2f, %.2f, %.2f)",
-      distance, target[0], target[1], target[2], current_position_[0], current_position_[1],
-      current_position_[2]);
-
+      
+    // Stopping condition
     if (utils::diff_2d(target, current_position_) < 1.0) {
       std_msgs::msg::Float32MultiArray stop_msg;
       std::vector<float> f_target(target.begin(), target.end());
@@ -211,45 +207,67 @@ private:
     if (distance == 0.0) return;
     for (size_t i = 0; i < 3; ++i) direction[i] /= distance;
 
-    double desired_yaw =
-      fixed_angle_.has_value() ? fixed_angle_.value() : std::atan2(direction[1], direction[0]);
-
-    // Calculate raw difference
+    double desired_yaw = fixed_angle_.has_value() ? fixed_angle_.value() : std::atan2(direction[1], direction[0]);
     double raw_yaw_diff = desired_yaw - current_yaw_;
-
-    // Wrap difference to [-pi, pi] using atan2(sin, cos)
     double yaw_error = hardcoded_angle_.has_value()
                          ? hardcoded_angle_.value()
                          : std::atan2(std::sin(raw_yaw_diff), std::cos(raw_yaw_diff));
 
-    // Fetch dynamic parameters in case they changed during runtime
+    // Fetch dynamic parameters
     this->get_parameter("kp_yaw", kp_yaw_);
     this->get_parameter("kp_dist", kp_dist_);
 
-    double dist_value = pid_dist_.update(distance) * 10.0;
-    double thrust_scale = std::clamp(dist_value, 1.0, 10.0);
     std::vector<double> cmd(8, 0.0);
-
     double vert_mult = (mode_ == "full_centerize") ? 0.25 : 0.6;
     for (int i = 0; i < 4; i++) cmd[i] = vert_mult * motor_command_[i];
 
-    double yaw_deadband = 15.0 * M_PI / 180.0;  // 15 degrees
-
-    // If we are tracking the pipe, and the error is bigger than 15 degrees
-    if (
-      std::abs(yaw_error) > yaw_deadband &&
-      (mode_ == "yaw_centerize" || mode_ == "full_centerize")) {
-      thrust_scale = std::clamp(dist_value, 0.2, 10.0);
-      cmd = apply_yaw_control(yaw_error, thrust_scale, cmd);
-    } else {
-      auto auv_pos = utils::world_to_auv_coordinates(direction, 3.0 * M_PI / 2.0 - original_yaw_);
-      auto keys = determine_keys(auv_pos);
-      cmd = parse_keys(keys, thrust_scale, cmd);
+    // ==========================================
+    // NEW: BLENDED CONTINUOUS CONTROL LOGIC
+    // ==========================================
+    
+    // 1. Calculate Continuous Yaw (No Deadband)
+    double yaw_command = 0.0;
+    if (mode_ == "yaw_centerize" || mode_ == "full_centerize") {
+        
+        // YOUR original math: directly multiply error by gain
+        yaw_command = kp_yaw_ * yaw_error; 
+        
+        // Clamp it to maximum thrust
+        yaw_command = std::clamp(yaw_command, -10.0, 10.0);
+        
+        // YOUR original inversion to match thruster polarity
+        yaw_command = -yaw_command; 
     }
+
+    // 2. Calculate Dynamic Surge Speed (Cosine Scaling)
+    // Map distance to a base thrust (the "carrot")
+    double base_thrust = std::clamp(distance * kp_dist_, 1.0, 10.0);
+    
+    // Scale thrust based on how straight we are aiming to prevent corner overshoot
+    // cos(yaw_error) smoothly drops the speed as the angle increases.
+    // std::max(0.1, ...) ensures we never completely stop moving forward.
+    double speed_scaling = std::max(0.1, std::cos(yaw_error)); 
+    double forward_thrust = base_thrust * speed_scaling;
+
+    // 3. Apply Positional Movement (Surge/Sway)
+    auto auv_pos = utils::world_to_auv_coordinates(direction, 3.0 * M_PI / 2.0 - original_yaw_);
+    auto keys = determine_keys(auv_pos);
+    cmd = parse_keys(keys, forward_thrust, cmd);
+
+    // 4. Overlay Yaw Command simultaneously
+    if (mode_ == "yaw_centerize" || mode_ == "full_centerize") {
+        // Note: Check if you need to invert yaw_command here based on your thruster layout
+        cmd[4] -= yaw_command;
+        cmd[7] -= yaw_command;
+        cmd[5] += yaw_command;
+        cmd[6] += yaw_command;
+    }
+
+    // ==========================================
 
     motor_command_ = cmd;
     std::vector<double> scaled_cmd = cmd;
-    for (auto & val : scaled_cmd) val *= 5.0;
+    // for (auto & val : scaled_cmd) val *= 5.0; // Global multiplier
 
     publish_cmd(scaled_cmd);
   }

@@ -1,0 +1,8 @@
+================ TRACKING METRICS REPORT ================
+1. Cross-Track Error (RMSE)   : 0.756 m
+2. Max Cross-Track Error       : 2.805 m
+3. Mean Velocity (Momentum)    : 0.635 ± 0.253 m/s
+4. Mean Heading Error          : 144.29 deg
+5. Terminal Position Error     : 0.902 m
+Mission Execution Time      : 80.8 s
+=========================================================
