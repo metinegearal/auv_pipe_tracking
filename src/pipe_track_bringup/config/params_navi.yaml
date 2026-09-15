@@ -6,3 +6,7 @@ waypoint_control_node:
     absolute_max_motor_signal: 40.0
     yaw_deadband_deg: 15.0
     dvl_active: true
+
+behaviour_node:
+  ros__parameters:
+    tree_xml_file: "map_mission.xml"

@@ -11,3 +11,7 @@ point_extract:
   ros__parameters:
     look_ahead_pixels: 100
     angle_weight: 0.5
+
+behaviour_node:
+  ros__parameters:
+    tree_xml_file: "reactive_mission.xml"
