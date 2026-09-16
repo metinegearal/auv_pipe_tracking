@@ -57,7 +57,7 @@ private:
 
     cv::Mat mask = cv_bridge::toCvCopy(msg, "mono8")->image;
     int h = mask.rows;
-    int h_split = h/2/3;
+    int h_split = h / 2 / 3;
     int w = mask.cols;
     cv::Point auv_center(w / 2 - 20, h / 2 + 30);
 
@@ -72,28 +72,28 @@ private:
     }
 
     std::vector<int> look_aheads = {
-        look_ahead_pixels_ - h_split, 
-        look_ahead_pixels_, 
-        look_ahead_pixels_ + h_split
-    };
-    auto result = navigation_utils::get_multi_pipe_navigation(mask, look_aheads, angle_weight_, true);
+      look_ahead_pixels_ - h_split, look_ahead_pixels_, look_ahead_pixels_ + h_split};
+    auto result =
+      navigation_utils::get_multi_pipe_navigation(mask, look_aheads, angle_weight_, true);
 
     if (result.centers.empty()) {
-        target_smoother_.reset(); // Pipe lost, clear historical data
-        return; // Fallback to search behavior
+      target_smoother_.reset();  // Pipe lost, clear historical data
+      return;                    // Fallback to search behavior
     }
 
     // 2. Calculate dynamic lookahead based on the furthest point's angle (result.angles_deg[2])
     double dynamic_t = trajectory_opt::calculate_dynamic_lookahead(result.angles_deg[2]);
 
     // 3. Apply Spatial Smoothing (Bezier Curve)
-    cv::Point spatial_target = trajectory_opt::optimize_trajectory(auv_center, result.centers, dynamic_t);
+    cv::Point spatial_target =
+      trajectory_opt::optimize_trajectory(auv_center, result.centers, dynamic_t);
 
     // 4. Apply Temporal Smoothing (EMA Low-Pass Filter)
     cv::Point final_smooth_target = target_smoother_.smooth(spatial_target);
 
     std_msgs::msg::Float32MultiArray center_msg;
-    std::vector<float> center_data = {static_cast<float>(final_smooth_target.x), static_cast<float>(final_smooth_target.y)};
+    std::vector<float> center_data = {
+      static_cast<float>(final_smooth_target.x), static_cast<float>(final_smooth_target.y)};
     center_msg.data = center_data;
     center_pub_->publish(center_msg);
 
@@ -120,7 +120,8 @@ private:
     // We still need this math for the stabilization check
     double desired_yaw = std::atan2(world_point.y(), world_point.x());
     double raw_diff = desired_yaw - yaw_;
-    double yaw_diff_deg = std::abs(std::atan2(std::sin(raw_diff), std::cos(raw_diff))) * 180.0 / M_PI;
+    double yaw_diff_deg =
+      std::abs(std::atan2(std::sin(raw_diff), std::cos(raw_diff))) * 180.0 / M_PI;
 
     // Condition 1: Wait until AUV is aligned before trusting the visual geometry
     if (!tracking_stabilized_) {
@@ -128,7 +129,8 @@ private:
         stabilization_counter_++;
         if (stabilization_counter_ > 20) {
           tracking_stabilized_ = true;
-          RCLCPP_INFO(this->get_logger(), "🚀 Tracking stabilized! Visual U-turn prediction active.");
+          RCLCPP_INFO(
+            this->get_logger(), "🚀 Tracking stabilized! Visual U-turn prediction active.");
         }
       } else {
         stabilization_counter_ = 0;
@@ -146,8 +148,8 @@ private:
       if (far_y > near_y + 15.0) {
         extreme_turn_counter_++;
       } else {
-        extreme_turn_counter_ = 0; // Reset if it was a noise glitch
-        
+        extreme_turn_counter_ = 0;  // Reset if it was a noise glitch
+
         // Fixed the warning: Passing both variables to match the two %.1f formatters
         // RCLCPP_INFO(this->get_logger(), "Visual Turn Back counter reset. Far Y: %.1f, Near Y: %.1f", far_y, near_y);
       }
@@ -155,7 +157,8 @@ private:
       // Only takes 5 frames (~0.16 seconds) to confirm visually!
       if (extreme_turn_counter_ > 5) {
         trigger_turn_back = true;
-        RCLCPP_WARN(this->get_logger(), "⚠️ Visual Turn Back triggered! Pipe curling backward in camera.");
+        RCLCPP_WARN(
+          this->get_logger(), "⚠️ Visual Turn Back triggered! Pipe curling backward in camera.");
       }
     }
 

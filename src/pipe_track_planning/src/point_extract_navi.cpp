@@ -101,13 +101,13 @@ private:
     }
 
     if (!is_exploration_empty) {
-        // Convert to standard Point for the smoother, then back to Point2f
-        cv::Point cv_target(std::round(target_point.x), std::round(target_point.y));
-        cv::Point smooth_target = target_smoother_.smooth(cv_target);
-        target_point.x = smooth_target.x;
-        target_point.y = smooth_target.y;
+      // Convert to standard Point for the smoother, then back to Point2f
+      cv::Point cv_target(std::round(target_point.x), std::round(target_point.y));
+      cv::Point smooth_target = target_smoother_.smooth(cv_target);
+      target_point.x = smooth_target.x;
+      target_point.y = smooth_target.y;
     } else {
-        target_smoother_.reset(); // Clear history if we stop
+      target_smoother_.reset();  // Clear history if we stop
     }
 
     // Publish to Behavior Tree

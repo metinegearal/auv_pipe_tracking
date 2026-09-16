@@ -6,21 +6,25 @@ from nav_msgs.msg import Odometry
 import numpy as np
 import rclpy
 from rclpy.node import Node
+from sensor_msgs.msg import MagneticField
 from std_msgs.msg import Bool
 
 
 class MetricsNode(Node):
 
     # Polyline representing the ground-truth pipeline segments
-    PIPELINE_WAYPOINTS = [(41,-66.2),(38.4,-68.6),(36.8,-69),(36.4,-76),(31.1,-76),(30.9,-69.3),(23.3,-69.3),(20.3,-65),(13.5,-65)]
-
+    PIPELINE_WAYPOINTS = [
+        (41, -66.2), (38.4, -68.6), (36.8, -69),
+        (36.4, -76), (31.1, -76), (30.9, -69.3),
+        (23.3, -69.3), (20.3, -65), (13.5, -65),
+    ]
 
     def __init__(self):
         super().__init__('metrics_node')
 
         self.declare_parameter(
             'results_dir',
-            '/home/metin-ege/AIEngineering/RoboticFocus/HoloSystem/results'
+            'results'
         )
         self.results_dir = self.get_parameter('results_dir').value
         os.makedirs(self.results_dir, exist_ok=True)
@@ -29,6 +33,12 @@ class MetricsNode(Node):
         self.sub_gt = self.create_subscription(
             Odometry, 'holocean/odom', self.gt_cb, 10
         )
+
+        self.yaw = 0.0
+        self.magnetometer_sub = self.create_subscription(
+            MagneticField, 'holocean/mag', self.magnetometer_cb, 10
+        )
+
         self.sub_est = self.create_subscription(
             Odometry, 'auv/estimated_odom', self.est_cb, 10
         )
@@ -63,9 +73,10 @@ class MetricsNode(Node):
 
     @staticmethod
     def point_to_segment_projection(p, a, b):
-        """
-        Calculate perpendicular distance from point p to segment ab,
-        and return the segment heading (tangent angle).
+        """Calculate perpendicular distance and segment heading.
+
+        Return the perpendicular distance from point p to segment ab and the
+        segment heading (tangent angle).
         """
         px, py = p
         ax, ay = a
@@ -110,6 +121,11 @@ class MetricsNode(Node):
     # ------------------------------------------------------------------
     # Subscribers
     # ------------------------------------------------------------------
+    def magnetometer_cb(self, msg: MagneticField):
+        self.yaw = math.atan2(msg.magnetic_field.x, msg.magnetic_field.y) - (math.pi / 2)
+        if self.yaw < -math.pi:
+            self.yaw += 2 * math.pi
+
     def gt_cb(self, msg: Odometry):
         if self.is_finished:
             return
@@ -118,10 +134,10 @@ class MetricsNode(Node):
         # if self.start_time is None:
         #     self.start_time = now
 
-        self.rel_time += 1.0 / 30.0 # simulation time step
+        self.rel_time += 1.0 / 30.0  # simulation time step
         px = msg.pose.pose.position.x
         py = msg.pose.pose.position.y
-        yaw = self.yaw_from_quaternion(msg.pose.pose.orientation)
+        yaw = self.yaw
 
         # Speed magnitude (linear momentum)
         vx = msg.twist.twist.linear.x
@@ -195,7 +211,10 @@ class MetricsNode(Node):
         self.get_logger().info('================ TRACKING METRICS REPORT ================')
         self.get_logger().info(f'1. Cross-Track Error (RMSE)   : {rmse_cte:.3f} m')
         self.get_logger().info(f'2. Max Cross-Track Error       : {max_cte:.3f} m')
-        self.get_logger().info(f'3. Mean Velocity (Momentum)    : {mean_speed:.3f} ± {std_speed:.3f} m/s')
+        self.get_logger().info(
+            f'3. Mean Velocity (Momentum)    : {mean_speed:.3f} ± '
+            f'{std_speed:.3f} m/s'
+        )
         self.get_logger().info(f'4. Mean Heading Error          : {mean_heading_err:.2f} deg')
         self.get_logger().info(f'5. Terminal Position Error     : {terminal_error:.3f} m')
         self.get_logger().info(f'   Mission Execution Time      : {total_time:.1f} s')
@@ -204,8 +223,13 @@ class MetricsNode(Node):
         self.generate_academic_plots(rmse_cte, max_cte, terminal_error, mean_speed)
 
     def generate_academic_plots(self, rmse_cte, max_cte, terminal_err, mean_speed):
-        """Generates a 3-panel publication benchmark figure."""
-        plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
+        """Generate a 3-panel publication benchmark figure."""
+        plot_style = (
+            'seaborn-v0_8-whitegrid'
+            if 'seaborn-v0_8-whitegrid' in plt.style.available
+            else 'default'
+        )
+        plt.style.use(plot_style)
         fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
         # --- Panel 1: Top-Down 2D Trajectory ---
@@ -242,8 +266,14 @@ class MetricsNode(Node):
         ax3 = axes[2]
         ax3_twin = ax3.twinx()
 
-        p1 = ax3.plot(self.timestamps, self.speeds, 'teal', linewidth=2, label='Linear Velocity [m/s]')
-        p2 = ax3_twin.plot(self.timestamps, self.heading_errors_deg, 'orange', linewidth=1.5, linestyle=':', label='Heading Error [°]')
+        p1 = ax3.plot(
+            self.timestamps, self.speeds, 'teal', linewidth=2,
+            label='Linear Velocity [m/s]'
+        )
+        p2 = ax3_twin.plot(
+            self.timestamps, self.heading_errors_deg, 'orange', linewidth=1.5,
+            linestyle=':', label='Heading Error [°]'
+        )
 
         ax3.set_title('Momentum & Heading Alignment', fontsize=12, fontweight='bold')
         ax3.set_xlabel('Mission Time [s]')
@@ -252,7 +282,7 @@ class MetricsNode(Node):
 
         # Combine twin-axis legends
         lines = p1 + p2
-        labels = [l.get_label() for l in lines]
+        labels = [line.get_label() for line in lines]
         ax3.legend(lines, labels, loc='upper right', frameon=True)
 
         plt.tight_layout()
