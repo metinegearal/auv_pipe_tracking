@@ -269,7 +269,8 @@ def main(args=None):
         rclpy.spin(node)
     except KeyboardInterrupt:
         node.get_logger().info('Keyboard interrupt detected. Computing final metrics...')
-        node.evaluate_and_plot()
+        if not node.is_finished:
+            node.evaluate_and_plot()
     finally:
         node.destroy_node()
         rclpy.shutdown()
