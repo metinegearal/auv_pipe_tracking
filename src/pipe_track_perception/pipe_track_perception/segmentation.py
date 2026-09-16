@@ -105,7 +105,10 @@ class ObjectSegmentation(Node):
 
         filness_ratio = np.sum(mask > 0) / (w * h)
         if filness_ratio < 0.0025:
-            self.get_logger().warn(f'Low pipe detection confidence, ignoring frame. filness_ratio={filness_ratio:.5f}')
+            self.get_logger().warn(
+                f'Low pipe detection confidence, ignoring frame. '
+                f'filness_ratio={filness_ratio:.5f}'
+            )
             return
 
         # Use pre-allocated kernel

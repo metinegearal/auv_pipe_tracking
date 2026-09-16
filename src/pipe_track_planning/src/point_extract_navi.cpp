@@ -7,6 +7,7 @@
 #include <std_msgs/msg/float32_multi_array.hpp>
 
 #include "utils/explore_2d.hpp"
+#include "utils/traj_opt.hpp"
 
 class PointExtractNavi : public rclcpp::Node
 {
@@ -91,15 +92,22 @@ private:
     } else {
       target_point = current_position_;
 
-      // --- NEW: Behavior Tree Logic ---
       if (has_started_exploration_) {
-        // We HAD points before, but now we don't. Map is finished!
         is_exploration_empty = true;
         RCLCPP_WARN(this->get_logger(), "🏁 Map fully explored! Sending stop signal to BT.");
       } else {
-        // We just started and haven't generated the first points yet.
         RCLCPP_WARN(this->get_logger(), "Waiting for initial exploration points...");
       }
+    }
+
+    if (!is_exploration_empty) {
+      // Convert to standard Point for the smoother, then back to Point2f
+      cv::Point cv_target(std::round(target_point.x), std::round(target_point.y));
+      cv::Point smooth_target = target_smoother_.smooth(cv_target);
+      target_point.x = smooth_target.x;
+      target_point.y = smooth_target.y;
+    } else {
+      target_smoother_.reset();  // Clear history if we stop
     }
 
     // Publish to Behavior Tree
@@ -141,8 +149,8 @@ private:
   bool is_stopped_ = false;
   bool is_not_started_ = true;
 
-  // NEW: Track if we've successfully started the map building process
   bool has_started_exploration_ = false;
+  trajectory_opt::TargetSmoother target_smoother_{0.5};
 
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_cam_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr position_sub_;

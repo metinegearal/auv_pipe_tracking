@@ -11,6 +11,7 @@
 #include "utils/lie_algebra.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/navigation_utils.hpp"
+#include "utils/traj_opt.hpp"
 
 class ObjectSegmentation : public rclcpp::Node
 {
@@ -56,7 +57,9 @@ private:
 
     cv::Mat mask = cv_bridge::toCvCopy(msg, "mono8")->image;
     int h = mask.rows;
+    int h_split = h / 2 / 3;
     int w = mask.cols;
+    cv::Point auv_center(w / 2 - 20, h / 2 + 30);
 
     std::vector<MapPoint> points;
     for (int y = 0; y < h; ++y) {
@@ -68,11 +71,29 @@ private:
       }
     }
 
-    auto [angle, center, skel_img, weight_map] =
-      navigation_utils::get_weighted_pipe_navigation(mask, look_ahead_pixels_, angle_weight_, true);
+    std::vector<int> look_aheads = {
+      look_ahead_pixels_ - h_split, look_ahead_pixels_, look_ahead_pixels_ + h_split};
+    auto result =
+      navigation_utils::get_multi_pipe_navigation(mask, look_aheads, angle_weight_, true);
+
+    if (result.centers.empty()) {
+      target_smoother_.reset();  // Pipe lost, clear historical data
+      return;                    // Fallback to search behavior
+    }
+
+    // 2. Calculate dynamic lookahead based on the furthest point's angle (result.angles_deg[2])
+    double dynamic_t = trajectory_opt::calculate_dynamic_lookahead(result.angles_deg[2]);
+
+    // 3. Apply Spatial Smoothing (Bezier Curve)
+    cv::Point spatial_target =
+      trajectory_opt::optimize_trajectory(auv_center, result.centers, dynamic_t);
+
+    // 4. Apply Temporal Smoothing (EMA Low-Pass Filter)
+    cv::Point final_smooth_target = target_smoother_.smooth(spatial_target);
 
     std_msgs::msg::Float32MultiArray center_msg;
-    std::vector<float> center_data = {static_cast<float>(center.x), static_cast<float>(center.y)};
+    std::vector<float> center_data = {
+      static_cast<float>(final_smooth_target.x), static_cast<float>(final_smooth_target.y)};
     center_msg.data = center_data;
     center_pub_->publish(center_msg);
 
@@ -90,45 +111,54 @@ private:
 
     // 3. Chain transforms and get world point
     Eigen::Matrix4d T_world_cam = T_world_body * T_body_cam;
-    Eigen::Vector2d pixel(center.x, center.y);
+    Eigen::Vector2d pixel(final_smooth_target.x, final_smooth_target.y);
     Eigen::Vector3d world_point = math_utils::point_from_depth_matrix(pixel, 15.0, K, T_world_cam);
 
-    // --- NEW: BEHAVIOR TREE TURN BACK LOGIC ---
-    // Calculate angle between our current yaw and the target waypoint
+    // --- PREDICTIVE VISUAL TURN BACK LOGIC ---
+    bool trigger_turn_back = false;
+
+    // We still need this math for the stabilization check
     double desired_yaw = std::atan2(world_point.y(), world_point.x());
     double raw_diff = desired_yaw - yaw_;
-
-    // Wrap difference to [-180, 180] degrees
     double yaw_diff_deg =
       std::abs(std::atan2(std::sin(raw_diff), std::cos(raw_diff))) * 180.0 / M_PI;
 
-    // Condition 3: Ignore start of tracking. Wait until AUV is aligned (< 20 degrees) for at least 20 frames.
+    // Condition 1: Wait until AUV is aligned before trusting the visual geometry
     if (!tracking_stabilized_) {
       if (yaw_diff_deg < 20.0) {
         stabilization_counter_++;
         if (stabilization_counter_ > 20) {
           tracking_stabilized_ = true;
-          RCLCPP_INFO(this->get_logger(), "🚀 Tracking stabilized! Turn-back safety active.");
+          RCLCPP_INFO(
+            this->get_logger(), "🚀 Tracking stabilized! Visual U-turn prediction active.");
         }
       } else {
-        stabilization_counter_ = 0;  // Reset if it wanders off
+        stabilization_counter_ = 0;
       }
     }
 
-    // Conditions 1 & 2: If we are stabilized, check for >60 degree turns
-    bool trigger_turn_back = false;
+    // Condition 2: Visual prediction
+    if (tracking_stabilized_ && result.centers.size() == 3) {
+      // In OpenCV, lower Y means higher on the screen.
+      double near_y = result.centers[0].y;
+      double far_y = result.centers[2].y;
 
-    if (tracking_stabilized_) {
-      if (yaw_diff_deg > 60.0) {
+      // If the furthest point is physically lower on the screen than the nearest point,
+      // the pipe is visually curling backwards into a U-turn.
+      if (far_y > near_y + 15.0) {
         extreme_turn_counter_++;
       } else {
-        extreme_turn_counter_ = 0;  // Gate it out: reset if it was just a glitch
+        extreme_turn_counter_ = 0;  // Reset if it was a noise glitch
+
+        // Fixed the warning: Passing both variables to match the two %.1f formatters
+        // RCLCPP_INFO(this->get_logger(), "Visual Turn Back counter reset. Far Y: %.1f, Near Y: %.1f", far_y, near_y);
       }
 
-      // Must see the extreme turn for 10 consecutive frames (~1 second at 10Hz)
-      if (extreme_turn_counter_ > 10) {
+      // Only takes 5 frames (~0.16 seconds) to confirm visually!
+      if (extreme_turn_counter_ > 5) {
         trigger_turn_back = true;
-        RCLCPP_WARN(this->get_logger(), "⚠️ Turn Back triggered! Yaw diff: %.1f deg", yaw_diff_deg);
+        RCLCPP_WARN(
+          this->get_logger(), "⚠️ Visual Turn Back triggered! Pipe curling backward in camera.");
       }
     }
 
@@ -146,11 +176,11 @@ private:
 
     // --- Debug Visualization ---
     cv::Mat debug_img;
-    cv::cvtColor(skel_img, debug_img, cv::COLOR_GRAY2BGR);
+    cv::cvtColor(result.skeleton_img, debug_img, cv::COLOR_GRAY2BGR);
     cv::Point img_center(w / 2, h / 2);
     cv::circle(debug_img, img_center, 5, cv::Scalar(255, 0, 0), -1);
-    cv::circle(debug_img, center, 5, cv::Scalar(0, 255, 0), -1);
-    cv::line(debug_img, img_center, center, cv::Scalar(0, 255, 255), 2);
+    cv::circle(debug_img, final_smooth_target, 5, cv::Scalar(0, 255, 0), -1);
+    cv::line(debug_img, img_center, final_smooth_target, cv::Scalar(0, 255, 255), 2);
 
     cv::imshow("Segmentation Debug", debug_img);
     cv::waitKey(1);
@@ -168,6 +198,7 @@ private:
 
   int look_ahead_pixels_ = 100;
   double angle_weight_ = 0.5;
+  trajectory_opt::TargetSmoother target_smoother_{0.25};
 
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_cam_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr height_sub_, sub_mag_;

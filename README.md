@@ -9,8 +9,10 @@ ROS 2 integration for pipe tracking with the HoloOcean underwater simulator. The
 
 - `pipe_track.launch.py` runs the coordinate-free scan. It uses the camera mask, yaw, and the vehicle's current state to select the next target, without building a world-coordinate map.
 - `pipe_track_navi.launch.py` runs the coordinate/map-based scan. It is designed to receive vehicle location from a navigation module, but that module is not integrated yet, so it currently reads the required location from HoloOcean ground truth.
+- Continuous trajectory optimization is integrated into the coordinate-free planner.
+- Behavior Tree mission termination is integrated into both bringup modes.
 - The HoloOcean map used by this project will be shared separately when it is ready.
-- `pipe_track_evaluation` is a placeholder. It will receive the scoring parameters and evaluation implementation in a future update.
+- `pipe_track_evaluation` now provides the starting point for academic odometry metrics and trajectory plots. RMSE calculation and timestamp alignment are still being completed.
 
 ## Repository layout
 
@@ -21,12 +23,52 @@ ROS 2 integration for pipe tracking with the HoloOcean underwater simulator. The
 | `pipe_track_planning` | Extracts pipe points and produces tracking targets. |
 | `pipe_track_control` | Controls the vehicle toward the generated targets. |
 | `pipe_track_bringup` | Launch files and shared parameters. |
-| `pipe_track_evaluation` | Reserved for the upcoming scoring and evaluation system. |
+| `pipe_track_evaluation` | Collects ground-truth and estimated odometry for academic metrics and plots. |
+| `pipe_track_mission` | Runs Behavior Tree mission logic and publishes the stop signal. |
 
 There are currently two bringup modes, corresponding to the two scan algorithms described in [`media/pipeTrack.md`](media/pipeTrack.md):
 
 1. **Scan without coordinates**: `pipe_track.launch.py`. This is the currently usable end-to-end mode. It uses the downward camera, segmentation mask, yaw, and current vehicle state. It does not require the separate navigation module.
 2. **Main coordinate-based scan**: `pipe_track_navi.launch.py`. This projects detected pixels into world positions, classifies explored/object/interested areas, and selects the closest interested point while building a map. The navigation module that should provide the vehicle location has not been integrated yet; for now, this path uses HoloOcean ground truth for location.
+
+Both launch files also start `pipe_track_mission/behaviour_node`. The selected tree is controlled by the mode-specific parameter file:
+
+| Launch file | Mission tree | Termination condition |
+| --- | --- | --- |
+| `pipe_track.launch.py` | `reactive_mission.xml` | Sustained visual turn-back signal, indicating that the pipe has been lost or the vehicle is continuously turning back. |
+| `pipe_track_navi.launch.py` | `map_mission.xml` | Exploration map has no remaining points. |
+
+When a termination condition succeeds, the Behavior Tree publishes `/movement/finished_execution`, which stops waypoint control.
+
+## Implemented features
+
+### Continuous trajectory optimization
+
+The coordinate-free planner now produces a smoother tracking target from multiple pipe look-ahead points:
+
+- Dynamic Bezier look-ahead changes with the estimated pipe angle. Straighter sections use a farther look-ahead; sharper curves use a nearer one.
+- Spatial smoothing uses a cubic Bezier trajectory through the current AUV center and the selected pipe points.
+- Temporal smoothing uses an exponential moving average to reduce frame-to-frame target jitter.
+- The temporal filter resets when the pipe is lost so stale targets are not carried into a new search.
+
+The optimized target is published through `/trajectory/waypoint` for the control node.
+
+### Academic evaluation metrics
+
+`pipe_track_evaluation` subscribes to:
+
+- `holocean/odom` for simulator ground truth
+- `auv/estimated_odom` for the estimated vehicle trajectory
+
+The package is structured to compare trajectories and generate plots for cross-track error, heading error, velocity, and cumulative trajectory error. The current `calculate_rmse()` method is still a work in progress, so the figures in `media/results` should be treated as benchmark outputs rather than a reproducible evaluation command.
+
+### Behavior Tree mission termination
+
+The mission package uses BehaviorTree.CPP and Groot 2 publishing. Its custom nodes monitor planning signals and issue one shared stop command:
+
+- `IsConstantlyTurningBack` confirms a persistent visual turn-back condition before stopping the reactive mission.
+- `IsExplorationEmpty` stops the map-based mission when no unexplored points remain.
+- `StopAUV` publishes `/movement/finished_execution` to the waypoint controller.
 
 ## Requirements
 
@@ -72,7 +114,7 @@ source install/setup.bash
 
 ## Running
 
-Start the currently supported coordinate-free scan:
+Start the currently supported coordinate-free scan with reactive mission termination:
 
 ```bash
 source /opt/ros/<ros-distro>/setup.bash
@@ -82,7 +124,7 @@ ros2 launch pipe_track_bringup pipe_track.launch.py
 
 The launch file starts the simulator, perception, coordinate-free point extraction, and waypoint control nodes. Parameters are loaded from `src/pipe_track_bringup/config/params.yaml`. This path uses yaw and the current vehicle state rather than a navigation-provided world position.
 
-Run the coordinate-based scan with the current ground-truth location fallback:
+Run the coordinate-based scan with the current ground-truth location fallback and map completion termination:
 
 ```bash
 ros2 launch pipe_track_bringup pipe_track_navi.launch.py
@@ -101,14 +143,29 @@ flowchart LR
 	S -. yaw and current state .-> X
 	S -. ground-truth location fallback .-> X
 	N[Navigation module<br/>not integrated] -. future location input .-> X
-	E[Evaluation<br/>coming soon] -. future scoring .-> S
+	M[Behavior Tree mission] -->|stop signal| C
+	E[Evaluation metrics] -. odometry and plots .-> S
 ```
 
 The simulator bridge publishes topics under the `holocean/` namespace, including camera images, IMU, magnetometer, DVL, and odometry data. The perception node publishes the pipe mask on `object/mask`; downstream topic names and message contracts may evolve with the navigation and evaluation integrations.
 
-## Evaluation
+## Results
 
-The `pipe_track_evaluation` package currently contains only a placeholder entry point. Scoring parameters and the evaluation nodes/scripts will be added in a later update. Until then, system performance should be assessed using recorded runs and the simulator outputs directly.
+The repository includes benchmark figures under [`media/results`](media/results). They compare the ground-truth pipeline with the AUV trajectory and report cross-track, heading, velocity, and cumulative trajectory error.
+
+| Benchmark | Reported trajectory RMSE |
+| --- | ---: |
+| Base benchmark | 0.78 m |
+| Base movement benchmark | 0.71 m |
+| Base trajectory optimization benchmark | 0.76 m |
+| Navigation benchmark | 1.30 m |
+| Navigation movement benchmark | 1.10 m |
+
+![Trajectory optimization benchmark](media/results/benchmark_base_trajectory_v3.png)
+
+![Navigation benchmark](media/results/benchmark_navi_v1.png)
+
+The plotted values are included as reference results from the current experiments; they are not a substitute for a finalized, reproducible evaluator.
 
 ## Development
 
