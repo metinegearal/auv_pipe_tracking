@@ -83,10 +83,47 @@ ROS 2 packages such as `rclpy`, `sensor_msgs`, `cv_bridge`, `nav_msgs`, and `lau
 
 ## Installation
 
-From the repository root:
+There are two supported ways to run the project: the pre-configured Docker environment (recommended) or a native local installation.
 
-For holoocean installation:
-https://byu-holoocean.github.io/holoocean-docs/v2.3.0/usage/installation.html
+### Method 1: Docker (Recommended)
+
+The Docker setup provides ROS 2 Jazzy, the ROS dependencies, CUDA-enabled PyTorch, BehaviorTree.CPP, and the Unreal Engine rendering libraries used by HoloOcean.
+
+#### Prerequisites
+
+- NVIDIA drivers version 535 or newer
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+- Docker Engine and Docker Compose V2
+- The HoloOcean `BauRov` world package installed on the host at `~/.local/share/holoocean/`
+- The UNet35 segmentation model downloaded from [Google Drive](https://drive.google.com/drive/folders/1qJhubrfIRAHTARl1LSkv2sRGxkRqvEHG?usp=sharing) and saved as `src/pipe_track_perception/pipe_track_perception/models/segment/best_pipe_unet35.pth`
+
+The HoloOcean map/world package is not included in this repository. The Docker Compose file mounts the host HoloOcean directory into the container automatically.
+
+#### Build and start
+
+From the repository root, allow the container to access the host X11 display for Unreal Engine rendering:
+
+```bash
+xhost +local:root
+docker compose up -d --build
+```
+
+Open a shell in the running container and build the ROS 2 workspace:
+
+```bash
+docker exec -it auv_workspace bash
+cd /workspace
+colcon build --symlink-install
+source install/setup.bash
+```
+
+The repository is mounted at `/workspace/src/pipe_track_ros2`, so source changes on the host are immediately visible inside the container.
+
+### Method 2: Local Installation
+
+For a native installation, use a supported Ubuntu and ROS 2 distribution with a CUDA-compatible PyTorch setup. Follow the [HoloOcean installation guide](https://byu-holoocean.github.io/holoocean-docs/v2.3.0/usage/installation.html) for the simulator and map prerequisites.
+
+From the repository root:
 
 ```bash
 python3 -m venv .venv
@@ -95,18 +132,18 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Install the segmentation model to:
-auv_pipe_tracking/src/pipe_track_perception/pipe_track_perception/models/segment/best_pipe_unet35.pth
-https://drive.google.com/drive/folders/1qJhubrfIRAHTARl1LSkv2sRGxkRqvEHG?usp=sharing
+Download the [UNet35 segmentation model](https://drive.google.com/drive/folders/1qJhubrfIRAHTARl1LSkv2sRGxkRqvEHG?usp=sharing) and save it to:
 
+```text
+src/pipe_track_perception/pipe_track_perception/models/segment/best_pipe_unet35.pth
+```
 
-The requirements file installs HoloOcean directly from its Git repository. The HoloOcean map is not included in this repository; install or copy the shared map according to the map package's instructions when it becomes available.
+The requirements file installs HoloOcean from Git. Install the HoloOcean `BauRov` world/map separately according to the HoloOcean documentation.
 
-Source the ROS 2 environment, then build the workspace:
+Source ROS 2 and build the workspace:
 
 ```bash
 source /opt/ros/<ros-distro>/setup.bash
-cd pipe_track_ros2
 rosdep install --from-paths src --ignore-src -r -y
 colcon build --symlink-install
 source install/setup.bash
@@ -114,7 +151,7 @@ source install/setup.bash
 
 ## Running
 
-Start the currently supported coordinate-free scan with reactive mission termination:
+Whether running natively or inside `auv_workspace`, the launch commands are the same. Start the currently supported coordinate-free scan with reactive mission termination:
 
 ```bash
 source /opt/ros/<ros-distro>/setup.bash

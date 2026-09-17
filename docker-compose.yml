@@ -1,0 +1,32 @@
+services:
+  auv_system:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: auv_pipe_track:jazzy
+    container_name: auv_workspace
+    stdin_open: true 
+    tty: true
+    network_mode: host
+    ipc: host       
+    privileged: true
+    volumes:
+      # Mount your local repository directly into the container's src folder
+      - ./:/workspace/src/pipe_track_ros2
+      # Passthrough X11 socket for HoloOcean GUI rendering
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${HOME}/.local/share/holoocean:/home/auv_user/.local/share/holoocean
+      - /usr/share/vulkan/icd.d:/usr/share/vulkan/icd.d:ro
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu, utility, compute, graphics, display]
