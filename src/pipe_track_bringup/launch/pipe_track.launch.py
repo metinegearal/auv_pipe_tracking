@@ -50,12 +50,12 @@ def generate_launch_description():
             name='evaluation_system',
             parameters=[config_file]
         ),
-        Node(
-            package='pipe_track_vo',
-            executable='vo_node',
-            name='vo_node',
-            parameters=[config_file]
-        ),
+        # Node(
+        #     package='pipe_track_vo',
+        #     executable='vo_node',
+        #     name='vo_node',
+        #     parameters=[config_file]
+        # ),
         Node(
             package='pipe_track_estimation',
             executable='estimation_node',

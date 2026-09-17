@@ -32,7 +32,7 @@ public:
                              double dt);
 
     // Add a DVL reading (Velocity constraint)
-    void add_dvl_measurement(const Eigen::Vector3d& linear_velocity, double timestamp);
+    void add_dvl_measurement(const Eigen::Vector3d& linear_velocity, double timestamp, double absolute_yaw);
 
     // Add Visual Odometry / Camera pose
     void add_vo_measurement(const gtsam::Pose3& vo_pose, double timestamp);
@@ -52,6 +52,7 @@ private:
 
     // IMU Preintegration Tool
     std::shared_ptr<gtsam::PreintegratedImuMeasurements> imu_preintegrated_;
+    gtsam::noiseModel::Diagonal::shared_ptr mag_noise_;
 
     // State Tracking
     uint64_t state_index_; 

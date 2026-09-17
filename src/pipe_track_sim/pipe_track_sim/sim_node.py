@@ -465,21 +465,21 @@ class HoloOceanROS2Bridge(Node):
                         )
 
                     try:
-                        dvl = state.get('DVLSensor', None) if isinstance(
-                            state, dict) else getattr(state, 'DVLSensor', None)
-                        self._publish_dvl(dvl)
-                    except Exception:
-                        self.get_logger().debug(
-                            'dvl failed: %s' % traceback.format_exc()
-                        )
-
-                    try:
                         imu = state.get('IMUSensor', None) if isinstance(
                             state, dict) else getattr(state, 'IMUSensor', None)
                         self._publish_imu(imu)
                     except Exception:
                         self.get_logger().debug(
                             'imu failed: %s' % traceback.format_exc()
+                        )
+
+                    try:
+                        dvl = state.get('DVLSensor', None) if isinstance(
+                            state, dict) else getattr(state, 'DVLSensor', None)
+                        self._publish_dvl(dvl)
+                    except Exception:
+                        self.get_logger().debug(
+                            'dvl failed: %s' % traceback.format_exc()
                         )
 
                     try:

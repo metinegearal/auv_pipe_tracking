@@ -8,19 +8,27 @@ using gtsam::symbol_shorthand::B; // Bias
 namespace pipe_track_estimation {
 
 GtsamEstimator::GtsamEstimator() : state_index_(0) {
-    // Setup iSAM2 optimizer parameters
     gtsam::ISAM2Params parameters;
     parameters.relinearizeThreshold = 0.1;
     parameters.relinearizeSkip = 1;
     isam_ = std::make_shared<gtsam::ISAM2>(parameters);
 
-    // Define noise models
+    // --- ALIGNED WITH HOLOOCEAN JSON ---
+    double accel_sigma = 0.03;      // From JSON: AccelSigma
+    double gyro_sigma = 0.0035;     // From JSON: AngVelSigma
+    double dvl_sigma = 0.001;       // From JSON: VelSigma
+    double mag_yaw_sigma = 0.05;    // From your Python EKF (0.05**2)
+
     prior_pose_noise_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 0.01, 0.01, 0.01, 0.01, 0.01, 0.01).finished());
     prior_vel_noise_  = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.01, 0.01, 0.01));
     prior_bias_noise_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3).finished());
     
-    dvl_noise_ = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.05, 0.05, 0.05));
-    vo_noise_  = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 0.05, 0.05, 0.05, 0.1, 0.1, 0.1).finished());
+    dvl_noise_ = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(dvl_sigma, dvl_sigma, dvl_sigma));
+    
+    // Yaw-Only Noise (Ignore Roll, Pitch, X, Y, Z. Trust Yaw)
+    mag_noise_ = gtsam::noiseModel::Diagonal::Sigmas(
+        (gtsam::Vector(6) << 1e5, 1e5, mag_yaw_sigma, 1e5, 1e5, 1e5).finished()
+    );
 }
 
 void GtsamEstimator::initialize(const gtsam::Pose3& initial_pose, 
@@ -108,46 +116,95 @@ void GtsamEstimator::add_vo_measurement(const gtsam::Pose3& vo_pose, double /*ti
     imu_preintegrated_->resetIntegrationAndSetBias(current_bias_);
 }
 
-void GtsamEstimator::add_dvl_measurement(const Eigen::Vector3d& linear_velocity_body, double /*timestamp*/) {
-    std::lock_guard<std::mutex> lock(graph_mutex_);
-    if (state_index_ == 0) return; // Wait for initialization
+// void GtsamEstimator::add_dvl_measurement(const Eigen::Vector3d& linear_velocity_body, double /*timestamp*/) {
+//     std::lock_guard<std::mutex> lock(graph_mutex_);
+//     // if (state_index_ == 0) return; // Wait for initialization
 
-    if (imu_preintegrated_->deltaTij() < 1e-4) {
-        return; // Skip if dt is practically zero
-    }
+//     if (imu_preintegrated_->deltaTij() < 1e-4) {
+//         std::cout << "[WARNING] DVL dropped: No IMU data! (Check IMU topic)" << std::endl;
+//         return; // Skip if dt is practically zero
+//     }
+
+//     state_index_++;
+
+//     // 1. Add the accumulated IMU factor connecting previous state to this new state
+//     gtsam::ImuFactor imu_factor(X(state_index_ - 1), V(state_index_ - 1),
+//                                 X(state_index_), V(state_index_),
+//                                 B(state_index_ - 1), *imu_preintegrated_);
+//     graph_.add(imu_factor);
+
+//     // 2. Add Bias factor
+//     graph_.add(gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>(
+//         B(state_index_ - 1), B(state_index_), gtsam::imuBias::ConstantBias(), prior_bias_noise_));
+
+//     // 3. DVL Velocity Factor
+//     // The DVL measures velocity relative to the AUV's body. GTSAM needs it in the world frame.
+//     // We rotate the DVL body velocity into world velocity using our last known orientation.
+//     gtsam::Vector3 world_velocity = current_pose_.rotation() * linear_velocity_body;
+//     graph_.addPrior(V(state_index_), world_velocity, dvl_noise_);
+
+//     // 4. Predict new state for initialization
+//     gtsam::NavState prop_state = imu_preintegrated_->predict(gtsam::NavState(current_pose_, current_velocity_), current_bias_);
+//     initial_estimates_.insert(X(state_index_), prop_state.pose());
+//     initial_estimates_.insert(V(state_index_), prop_state.velocity());
+//     initial_estimates_.insert(B(state_index_), current_bias_);
+
+//     // 5. Optimize
+//     isam_->update(graph_, initial_estimates_);
+//     isam_->update(); 
+    
+//     graph_.resize(0);
+//     initial_estimates_.clear();
+
+//     // 6. Extract optimized state and reset preintegration
+//     current_pose_ = isam_->calculateEstimate<gtsam::Pose3>(X(state_index_));
+//     current_velocity_ = isam_->calculateEstimate<gtsam::Vector3>(V(state_index_));
+//     current_bias_ = isam_->calculateEstimate<gtsam::imuBias::ConstantBias>(B(state_index_));
+    
+//     imu_preintegrated_->resetIntegrationAndSetBias(current_bias_);
+// }
+
+
+void GtsamEstimator::add_dvl_measurement(const Eigen::Vector3d& linear_velocity_body, double /*timestamp*/, double absolute_yaw) {
+    std::lock_guard<std::mutex> lock(graph_mutex_);
+    
+    // if (state_index_ == 0) return;
+    if (imu_preintegrated_->deltaTij() < 1e-4) return;
 
     state_index_++;
 
-    // 1. Add the accumulated IMU factor connecting previous state to this new state
+    // 1. IMU Factor
     gtsam::ImuFactor imu_factor(X(state_index_ - 1), V(state_index_ - 1),
                                 X(state_index_), V(state_index_),
                                 B(state_index_ - 1), *imu_preintegrated_);
     graph_.add(imu_factor);
 
-    // 2. Add Bias factor
+    // 2. Bias Factor
     graph_.add(gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>(
         B(state_index_ - 1), B(state_index_), gtsam::imuBias::ConstantBias(), prior_bias_noise_));
 
-    // 3. DVL Velocity Factor
-    // The DVL measures velocity relative to the AUV's body. GTSAM needs it in the world frame.
-    // We rotate the DVL body velocity into world velocity using our last known orientation.
+    // 3. DVL Factor
     gtsam::Vector3 world_velocity = current_pose_.rotation() * linear_velocity_body;
     graph_.addPrior(V(state_index_), world_velocity, dvl_noise_);
 
-    // 4. Predict new state for initialization
+    // --- NEW: MAGNETOMETER YAW FACTOR ---
+    // We create a dummy Pose3, but because of our mag_noise_ mask, GTSAM only looks at the Yaw!
+    gtsam::Pose3 yaw_constraint(gtsam::Rot3::Yaw(absolute_yaw), gtsam::Point3(0,0,0));
+    graph_.addPrior(X(state_index_), yaw_constraint, mag_noise_);
+    // ------------------------------------
+
+    // 4. Predict & Optimize
     gtsam::NavState prop_state = imu_preintegrated_->predict(gtsam::NavState(current_pose_, current_velocity_), current_bias_);
     initial_estimates_.insert(X(state_index_), prop_state.pose());
     initial_estimates_.insert(V(state_index_), prop_state.velocity());
     initial_estimates_.insert(B(state_index_), current_bias_);
 
-    // 5. Optimize
     isam_->update(graph_, initial_estimates_);
     isam_->update(); 
     
     graph_.resize(0);
     initial_estimates_.clear();
 
-    // 6. Extract optimized state and reset preintegration
     current_pose_ = isam_->calculateEstimate<gtsam::Pose3>(X(state_index_));
     current_velocity_ = isam_->calculateEstimate<gtsam::Vector3>(V(state_index_));
     current_bias_ = isam_->calculateEstimate<gtsam::imuBias::ConstantBias>(B(state_index_));
