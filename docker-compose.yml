@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/nightly/cu130}
     image: auv_pipe_track:jazzy
     container_name: auv_workspace
     stdin_open: true 

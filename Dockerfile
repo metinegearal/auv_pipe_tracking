@@ -1,5 +1,7 @@
 FROM osrf/ros:jazzy-desktop
 
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/nightly/cu130
+
 # Prevent interactive prompts during apt installations
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -48,7 +50,7 @@ RUN sed -i '/byu-holoocean/d' /tmp/requirements.txt && \
     pip3 install --no-cache-dir /tmp/HoloOcean/client --break-system-packages && \
     pip3 install --no-cache-dir --upgrade setuptools --break-system-packages && \
     pip3 install --no-cache-dir --ignore-installed kiwisolver "numpy<2.0.0" --break-system-packages && \
-    pip3 install --no-cache-dir --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu126 --break-system-packages && \
+    pip3 install --no-cache-dir --pre torch torchvision --index-url ${TORCH_INDEX_URL} --break-system-packages && \
     pip3 install --no-cache-dir -r /tmp/requirements.txt --break-system-packages
 # ----------------------------------
 # Create workspace directory

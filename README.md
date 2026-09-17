@@ -94,10 +94,22 @@ The Docker setup provides ROS 2 Jazzy, the ROS dependencies, CUDA-enabled PyTorc
 - NVIDIA drivers version 535 or newer
 - [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
 - Docker Engine and Docker Compose V2
-- The HoloOcean `BauRov` world package installed on the host at `~/.local/share/holoocean/`
+- The HoloOcean `BauRov` world package installed on the host at `~/.local/share/holoocean/2.3.0/worlds`
 - The UNet35 segmentation model downloaded from [Google Drive](https://drive.google.com/drive/folders/1qJhubrfIRAHTARl1LSkv2sRGxkRqvEHG?usp=sharing) and saved as `src/pipe_track_perception/pipe_track_perception/models/segment/best_pipe_unet35.pth`
 
-The HoloOcean map/world package is not included in this repository. The Docker Compose file mounts the host HoloOcean directory into the container automatically.
+#### Simulation World Assets
+
+The `BauRov` HoloOcean environment package is approximately 1.6 GB and is required to run the simulation. Download [`BauRov-v2.3.0.zip`](https://github.com/metinegearal/auv_pipe_tracking/releases/download/v1.0.0/BauRov.zip) from the project release, then unpack it into the default HoloOcean world directory on the host:
+
+```bash
+mkdir -p ~/.local/share/holoocean/2.3.0/worlds
+wget -O /tmp/BauRov.zip \
+	https://github.com/metinegearal/auv_pipe_tracking/releases/download/v1.0.0/BauRov.zip
+unzip /tmp/BauRov.zip -d ~/.local/share/holoocean/2.3.0/worlds/
+rm /tmp/BauRov.zip
+```
+
+Replace `<your-username>/<your-repo>` with the GitHub repository that hosts the release asset. Verify that the extracted `BauRov` directory is under `~/.local/share/holoocean/2.3.0/worlds/`. The Docker Compose file mounts `~/.local/share/holoocean` from the host into the container automatically.
 
 #### Build and start
 
@@ -107,6 +119,14 @@ From the repository root, allow the container to access the host X11 display for
 xhost +local:root
 docker compose up -d --build
 ```
+
+The default image installs the nightly PyTorch CUDA 13.0 wheels. To use a different PyTorch CUDA wheel channel, set `TORCH_INDEX_URL` when building the image. For example, for the stable CUDA 12.4 wheels:
+
+```bash
+TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124 docker compose up -d --build
+```
+
+Choose a PyTorch wheel channel compatible with the host NVIDIA driver and GPU. Docker cannot reliably select this automatically during `docker build`: the host GPU is exposed at container runtime, while Python dependencies are installed while the image is being built. The explicit build argument keeps the image reproducible and allows the CUDA channel to be changed without editing the Dockerfile.
 
 Open a shell in the running container and build the ROS 2 workspace:
 
