@@ -1,3 +1,6 @@
+import os
+from ament_index_python.packages import get_package_share_directory
+
 import cv2
 from cv_bridge import CvBridge
 import numpy as np
@@ -25,14 +28,11 @@ class ObjectSegmentation(Node):
             in_channels=3,
             classes=1,
         )
-
-        weight_path = (
-            '/home/metin-ege/AIEngineering/RoboticFocus/HoloSystem/'
-            'pipe_track_ros2/src/pipe_track_perception/'
-            'pipe_track_perception/models/segment/best_pipe_unet35.pth'
-        )
+        
+        package_share_dir = get_package_share_directory('pipe_track_perception')
+        model_path = os.path.join(package_share_dir, 'models', 'segment', 'best_pipe_unet35.pth')
         self.model.load_state_dict(torch.load(
-            weight_path, map_location=self.device))
+            model_path, map_location=self.device))
         self.model.to(self.device)  # Force model to GPU
         self.model.eval()  # Set to evaluation mode
 
