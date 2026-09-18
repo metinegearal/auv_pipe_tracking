@@ -147,7 +147,7 @@ private:
 
       // If the furthest point is physically lower on the screen than the nearest point,
       // the pipe is visually curling backwards into a U-turn.
-      if (far_y > near_y + h_split*0.5) {
+      if (far_y > near_y + h_split * 0.5) {
         extreme_turn_counter_++;
       } else {
         extreme_turn_counter_--;  // Reset if it was a noise glitch
@@ -180,10 +180,12 @@ private:
     waypoint_pub_->publish(wp_msg);
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    double math_latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    double math_latency_ms =
+      std::chrono::duration<double, std::milli>(end_time - start_time).count();
 
     if (math_latency_ms > 40.0) {
-        RCLCPP_WARN(this->get_logger(), "Math Bottleneck: Point extraction took %.1f ms", math_latency_ms);
+      RCLCPP_WARN(
+        this->get_logger(), "Math Bottleneck: Point extraction took %.1f ms", math_latency_ms);
     }
 
     // --- Debug Visualization ---

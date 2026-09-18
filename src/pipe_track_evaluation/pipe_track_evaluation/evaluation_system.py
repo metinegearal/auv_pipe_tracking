@@ -2,13 +2,13 @@ import csv
 import math
 import os
 
+from geometry_msgs.msg import PointStamped
 import matplotlib.pyplot as plt
 from nav_msgs.msg import Odometry
 import numpy as np
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import MagneticField, Image
-from geometry_msgs.msg import PointStamped
+from sensor_msgs.msg import Image, MagneticField
 from std_msgs.msg import Bool
 
 
@@ -44,7 +44,7 @@ class MetricsNode(Node):
         self.sub_finish = self.create_subscription(
             Bool, '/movement/finished_execution', self.finish_cb, 10
         )
-        
+
         # Latency Subscriptions
         self.sub_mask = self.create_subscription(
             Image, '/object/mask', self.mask_cb, 10
@@ -54,7 +54,7 @@ class MetricsNode(Node):
         )
 
         self.yaw = 0.0
-        self.time_of_mask= 0.0
+        self.time_of_mask = 0.0
 
         # Time series buffers
         self.timestamps = []
@@ -63,7 +63,7 @@ class MetricsNode(Node):
         self.speeds = []
         self.cross_track_errors = []
         self.heading_errors_deg = []
-        
+
         # Latency buffers
         self.perception_latencies = []
         self.pipeline_latencies = []
@@ -151,7 +151,7 @@ class MetricsNode(Node):
         if self.is_finished:
             return
 
-        self.rel_time += 1.0 / 30.0  
+        self.rel_time += 1.0 / 30.0
         px = msg.pose.pose.position.x
         py = msg.pose.pose.position.y
         yaw = self.yaw
@@ -218,48 +218,55 @@ class MetricsNode(Node):
         total_time = self.timestamps[-1] if self.timestamps else 0.0
 
         # Calculate Latencies
-        avg_perception = float(np.mean(self.perception_latencies)) if self.perception_latencies else 0.0
+        avg_perception = (
+            float(np.mean(self.perception_latencies))
+            if self.perception_latencies else 0.0
+        )
         avg_pipeline = float(np.mean(self.pipeline_latencies)) if self.pipeline_latencies else 0.0
         avg_planning = max(0.0, avg_pipeline - avg_perception)
 
         # Build Report String
         report = (
-            "================ TRACKING METRICS REPORT ================\n"
-            f"1. Cross-Track Error (RMSE)   : {rmse_cte:.3f} m\n"
-            f"2. Max Cross-Track Error      : {max_cte:.3f} m\n"
-            f"3. Mean Velocity (Momentum)   : {mean_speed:.3f} ± {std_speed:.3f} m/s\n"
-            f"4. Mean Heading Error         : {mean_heading_err:.2f} deg\n"
-            f"5. Terminal Position Error    : {terminal_error:.3f} m\n"
-            "---------------------------------------------------------\n"
-            f"   Avg Perception Latency     : {avg_perception:.1f} ms\n"
-            f"   Avg Planning Latency       : {avg_planning:.1f} ms\n"
-            f"   Total Pipeline Latency     : {avg_pipeline:.1f} ms\n"
-            f"   Mission Execution Time     : {total_time:.1f} s\n"
-            "=========================================================\n"
+            '================ TRACKING METRICS REPORT ================\n'
+            f'1. Cross-Track Error (RMSE)   : {rmse_cte:.3f} m\n'
+            f'2. Max Cross-Track Error      : {max_cte:.3f} m\n'
+            f'3. Mean Velocity (Momentum)   : {mean_speed:.3f} ± '
+            f'{std_speed:.3f} m/s\n'
+            f'4. Mean Heading Error         : {mean_heading_err:.2f} deg\n'
+            f'5. Terminal Position Error    : {terminal_error:.3f} m\n'
+            '---------------------------------------------------------\n'
+            f'   Avg Perception Latency     : {avg_perception:.1f} ms\n'
+            f'   Avg Planning Latency       : {avg_planning:.1f} ms\n'
+            f'   Total Pipeline Latency     : {avg_pipeline:.1f} ms\n'
+            f'   Mission Execution Time     : {total_time:.1f} s\n'
+            '=========================================================\n'
         )
 
         # Output to console and save to text file
-        self.get_logger().info(f"\n{report}")
+        self.get_logger().info(f'\n{report}')
         report_path = os.path.join(self.results_dir, 'metrics_summary.txt')
         with open(report_path, 'w') as f:
             f.write(report)
-        self.get_logger().info(f"📄 Summary saved to: {report_path}")
+        self.get_logger().info(f'📄 Summary saved to: {report_path}')
 
         # Save time-series data to CSV
         csv_path = os.path.join(self.results_dir, 'time_series_data.csv')
         with open(csv_path, 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['time_s', 'pos_x', 'pos_y', 'cte_m', 'speed_ms', 'heading_err_deg'])
+            writer.writerow([
+                'time_s', 'pos_x', 'pos_y', 'cte_m', 'speed_ms',
+                'heading_err_deg'
+            ])
             for i in range(len(self.timestamps)):
                 writer.writerow([
-                    self.timestamps[i], 
-                    self.gt_positions[i][0], 
-                    self.gt_positions[i][1], 
-                    self.cross_track_errors[i], 
-                    self.speeds[i], 
+                    self.timestamps[i],
+                    self.gt_positions[i][0],
+                    self.gt_positions[i][1],
+                    self.cross_track_errors[i],
+                    self.speeds[i],
                     self.heading_errors_deg[i]
                 ])
-        self.get_logger().info(f"💾 Raw data saved to: {csv_path}")
+        self.get_logger().info(f'💾 Raw data saved to: {csv_path}')
 
         self.generate_academic_plots(rmse_cte, max_cte, terminal_error, mean_speed)
 

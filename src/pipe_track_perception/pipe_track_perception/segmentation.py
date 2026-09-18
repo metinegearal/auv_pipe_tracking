@@ -1,3 +1,5 @@
+import time
+
 import cv2
 from cv_bridge import CvBridge
 import numpy as np
@@ -7,7 +9,6 @@ import segmentation_models_pytorch as smp
 from sensor_msgs.msg import Image, MagneticField
 from std_msgs.msg import Bool, Float32
 import torch
-import time
 
 
 class ObjectSegmentation(Node):
@@ -104,11 +105,14 @@ class ObjectSegmentation(Node):
         start_time = time.perf_counter()
         mask, confidence = self.maskeImg(frame)
 
-        torch.cuda.synchronize() 
-    
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+
         # 3. Calculate internal latency
         inference_time_ms = (time.perf_counter() - start_time) * 1000.0
-        # self.get_logger().info(f'Inference time: {inference_time_ms:.2f} ms')
+        self.get_logger().debug(
+            f'Inference time: {inference_time_ms:.2f} ms'
+        )
 
         h, w = mask.shape
         filness_ratio = np.sum(mask > 0) / (w * h)

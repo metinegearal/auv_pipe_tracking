@@ -1,4 +1,5 @@
 #include "utils/navigation_utils.hpp"
+
 #include <cmath>
 
 namespace navigation_utils
@@ -37,11 +38,11 @@ void getFastSkeleton(const cv::Mat & src, cv::Mat & dst, std::vector<cv::Point> 
   cv::minMaxLoc(dist, nullptr, &max_val);
 
   // 4. Threshold to keep only the center "spine"
-  // By keeping everything greater than 40% of the max depth, we get a solid, 
+  // By keeping everything greater than 40% of the max depth, we get a solid,
   // continuous line that is a few pixels thick.
   cv::Mat spine;
   cv::threshold(dist, spine, max_val * 0.4, 255, cv::THRESH_BINARY);
-  
+
   // 5. Convert back to standard 8-bit image for your downstream logic
   spine.convertTo(dst, CV_8UC1);
   cv::findNonZero(dst, points);
@@ -124,7 +125,7 @@ MultiNavResult get_multi_pipe_navigation(
 
   cv::Mat binary_mask;
   cv::threshold(mask_image, binary_mask, 127, 255, cv::THRESH_BINARY);
-  
+
   cv::Mat clean_skeleton = cv::Mat::zeros(binary_mask.size(), CV_8UC1);
   std::vector<cv::Point> points;
 
