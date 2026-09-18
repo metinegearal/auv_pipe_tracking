@@ -7,6 +7,7 @@ import segmentation_models_pytorch as smp
 from sensor_msgs.msg import Image, MagneticField
 from std_msgs.msg import Bool, Float32
 import torch
+import time
 
 
 class ObjectSegmentation(Node):
@@ -41,7 +42,7 @@ class ObjectSegmentation(Node):
         # --- 2. ROS SETUP ---
         self.bridge = CvBridge()
         self.sub_cam = self.create_subscription(
-            Image, 'holocean/cameraDown/image_raw', self.cam_callback, 10)
+            Image, 'holocean/cameraDown/image_raw', self.cam_callback, 1)
         self.mask_pub = self.create_publisher(Image, 'object/mask', 10)
 
         self.magnet = [0, 0, 0]
@@ -100,9 +101,16 @@ class ObjectSegmentation(Node):
 
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
 
+        start_time = time.perf_counter()
         mask, confidence = self.maskeImg(frame)
-        h, w = mask.shape
 
+        torch.cuda.synchronize() 
+    
+        # 3. Calculate internal latency
+        inference_time_ms = (time.perf_counter() - start_time) * 1000.0
+        # self.get_logger().info(f'Inference time: {inference_time_ms:.2f} ms')
+
+        h, w = mask.shape
         filness_ratio = np.sum(mask > 0) / (w * h)
         if filness_ratio < 0.0025:
             self.get_logger().warn(

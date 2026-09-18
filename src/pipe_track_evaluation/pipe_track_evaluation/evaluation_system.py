@@ -1,3 +1,4 @@
+import csv
 import math
 import os
 
@@ -6,7 +7,8 @@ from nav_msgs.msg import Odometry
 import numpy as np
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import MagneticField
+from sensor_msgs.msg import MagneticField, Image
+from geometry_msgs.msg import PointStamped
 from std_msgs.msg import Bool
 
 
@@ -33,18 +35,26 @@ class MetricsNode(Node):
         self.sub_gt = self.create_subscription(
             Odometry, 'holocean/odom', self.gt_cb, 10
         )
-
-        self.yaw = 0.0
         self.magnetometer_sub = self.create_subscription(
             MagneticField, 'holocean/mag', self.magnetometer_cb, 10
         )
-
         self.sub_est = self.create_subscription(
             Odometry, 'auv/estimated_odom', self.est_cb, 10
         )
         self.sub_finish = self.create_subscription(
             Bool, '/movement/finished_execution', self.finish_cb, 10
         )
+        
+        # Latency Subscriptions
+        self.sub_mask = self.create_subscription(
+            Image, '/object/mask', self.mask_cb, 10
+        )
+        self.sub_waypoint = self.create_subscription(
+            PointStamped, '/trajectory/waypoint', self.waypoint_cb, 10
+        )
+
+        self.yaw = 0.0
+        self.time_of_mask= 0.0
 
         # Time series buffers
         self.timestamps = []
@@ -53,6 +63,10 @@ class MetricsNode(Node):
         self.speeds = []
         self.cross_track_errors = []
         self.heading_errors_deg = []
+        
+        # Latency buffers
+        self.perception_latencies = []
+        self.pipeline_latencies = []
 
         self.start_time = None
         self.rel_time = 0.0
@@ -66,18 +80,12 @@ class MetricsNode(Node):
     # ------------------------------------------------------------------
     @staticmethod
     def yaw_from_quaternion(q):
-        """Extract yaw (Euler z) from a geometry_msgs/Quaternion."""
         siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
         cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
         return math.atan2(siny_cosp, cosy_cosp)
 
     @staticmethod
     def point_to_segment_projection(p, a, b):
-        """Calculate perpendicular distance and segment heading.
-
-        Return the perpendicular distance from point p to segment ab and the
-        segment heading (tangent angle).
-        """
         px, py = p
         ax, ay = a
         bx, by = b
@@ -89,7 +97,6 @@ class MetricsNode(Node):
         if seg_len_sq == 0.0:
             return math.hypot(px - ax, py - ay), math.atan2(dy, dx)
 
-        # Projection parameter t clamped to [0, 1]
         t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / seg_len_sq))
         proj_x = ax + t * dx
         proj_y = ay + t * dy
@@ -99,7 +106,6 @@ class MetricsNode(Node):
         return dist, seg_heading
 
     def compute_pipeline_deviation(self, point, auv_yaw):
-        """Find minimum cross-track distance and corresponding heading error."""
         min_dist = float('inf')
         target_heading = 0.0
 
@@ -111,7 +117,6 @@ class MetricsNode(Node):
                 min_dist = dist
                 target_heading = heading
 
-        # Angular difference wrapped to [-pi, pi]
         heading_err = math.atan2(
             math.sin(auv_yaw - target_heading),
             math.cos(auv_yaw - target_heading)
@@ -121,6 +126,22 @@ class MetricsNode(Node):
     # ------------------------------------------------------------------
     # Subscribers
     # ------------------------------------------------------------------
+    def mask_cb(self, msg: Image):
+        if self.is_finished:
+            return
+        now = self.get_clock().now()
+        msg_time = rclpy.time.Time.from_msg(msg.header.stamp)
+        latency_ms = (now.nanoseconds - msg_time.nanoseconds) / 1e6
+        self.perception_latencies.append(latency_ms)
+
+    def waypoint_cb(self, msg: PointStamped):
+        if self.is_finished:
+            return
+        now = self.get_clock().now()
+        msg_time = rclpy.time.Time.from_msg(msg.header.stamp)
+        latency_ms = (now.nanoseconds - msg_time.nanoseconds) / 1e6
+        self.pipeline_latencies.append(latency_ms)
+
     def magnetometer_cb(self, msg: MagneticField):
         self.yaw = math.atan2(msg.magnetic_field.x, msg.magnetic_field.y) - (math.pi / 2)
         if self.yaw < -math.pi:
@@ -130,28 +151,21 @@ class MetricsNode(Node):
         if self.is_finished:
             return
 
-        # now = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
-        # if self.start_time is None:
-        #     self.start_time = now
-
-        self.rel_time += 1.0 / 30.0  # simulation time step
+        self.rel_time += 1.0 / 30.0  
         px = msg.pose.pose.position.x
         py = msg.pose.pose.position.y
         yaw = self.yaw
 
-        # Speed magnitude (linear momentum)
         vx = msg.twist.twist.linear.x
         vy = msg.twist.twist.linear.y
         speed = math.hypot(vx, vy)
 
-        # 2. If Twist is empty (using direct location), derive speed numerically
         if speed == 0.0 and self.prev_pos != (0.0, 0.0):
             dt = 1.0 / 30.0
             dx = px - self.prev_pos[0]
             dy = py - self.prev_pos[1]
             speed = math.hypot(dx, dy) / dt
 
-        # Update previous states for the next tick
         self.prev_pos = (px, py)
 
         cte, head_err = self.compute_pipeline_deviation((px, py), yaw)
@@ -187,18 +201,14 @@ class MetricsNode(Node):
         speeds = np.array(self.speeds)
         heading_errs = np.array(self.heading_errors_deg)
 
-        # 1. Staying on the Line: RMSE & Max CTE
         rmse_cte = float(np.sqrt(np.mean(ctes ** 2)))
         max_cte = float(np.max(ctes))
 
-        # 2. Momentum & Smoothness: Velocity stats
         mean_speed = float(np.mean(speeds))
         std_speed = float(np.std(speeds))
 
-        # 3. Heading Tracking Error: Mean & Max
         mean_heading_err = float(np.mean(heading_errs))
 
-        # 4. Finishing at Target: Terminal Position Error
         target_finish = self.PIPELINE_WAYPOINTS[-1]
         actual_finish = self.gt_positions[-1]
         terminal_error = math.hypot(
@@ -207,23 +217,53 @@ class MetricsNode(Node):
         )
         total_time = self.timestamps[-1] if self.timestamps else 0.0
 
-        # Output to console
-        self.get_logger().info('================ TRACKING METRICS REPORT ================')
-        self.get_logger().info(f'1. Cross-Track Error (RMSE)   : {rmse_cte:.3f} m')
-        self.get_logger().info(f'2. Max Cross-Track Error       : {max_cte:.3f} m')
-        self.get_logger().info(
-            f'3. Mean Velocity (Momentum)    : {mean_speed:.3f} ± '
-            f'{std_speed:.3f} m/s'
+        # Calculate Latencies
+        avg_perception = float(np.mean(self.perception_latencies)) if self.perception_latencies else 0.0
+        avg_pipeline = float(np.mean(self.pipeline_latencies)) if self.pipeline_latencies else 0.0
+        avg_planning = max(0.0, avg_pipeline - avg_perception)
+
+        # Build Report String
+        report = (
+            "================ TRACKING METRICS REPORT ================\n"
+            f"1. Cross-Track Error (RMSE)   : {rmse_cte:.3f} m\n"
+            f"2. Max Cross-Track Error      : {max_cte:.3f} m\n"
+            f"3. Mean Velocity (Momentum)   : {mean_speed:.3f} ± {std_speed:.3f} m/s\n"
+            f"4. Mean Heading Error         : {mean_heading_err:.2f} deg\n"
+            f"5. Terminal Position Error    : {terminal_error:.3f} m\n"
+            "---------------------------------------------------------\n"
+            f"   Avg Perception Latency     : {avg_perception:.1f} ms\n"
+            f"   Avg Planning Latency       : {avg_planning:.1f} ms\n"
+            f"   Total Pipeline Latency     : {avg_pipeline:.1f} ms\n"
+            f"   Mission Execution Time     : {total_time:.1f} s\n"
+            "=========================================================\n"
         )
-        self.get_logger().info(f'4. Mean Heading Error          : {mean_heading_err:.2f} deg')
-        self.get_logger().info(f'5. Terminal Position Error     : {terminal_error:.3f} m')
-        self.get_logger().info(f'   Mission Execution Time      : {total_time:.1f} s')
-        self.get_logger().info('=========================================================')
+
+        # Output to console and save to text file
+        self.get_logger().info(f"\n{report}")
+        report_path = os.path.join(self.results_dir, 'metrics_summary.txt')
+        with open(report_path, 'w') as f:
+            f.write(report)
+        self.get_logger().info(f"📄 Summary saved to: {report_path}")
+
+        # Save time-series data to CSV
+        csv_path = os.path.join(self.results_dir, 'time_series_data.csv')
+        with open(csv_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['time_s', 'pos_x', 'pos_y', 'cte_m', 'speed_ms', 'heading_err_deg'])
+            for i in range(len(self.timestamps)):
+                writer.writerow([
+                    self.timestamps[i], 
+                    self.gt_positions[i][0], 
+                    self.gt_positions[i][1], 
+                    self.cross_track_errors[i], 
+                    self.speeds[i], 
+                    self.heading_errors_deg[i]
+                ])
+        self.get_logger().info(f"💾 Raw data saved to: {csv_path}")
 
         self.generate_academic_plots(rmse_cte, max_cte, terminal_error, mean_speed)
 
     def generate_academic_plots(self, rmse_cte, max_cte, terminal_err, mean_speed):
-        """Generate a 3-panel publication benchmark figure."""
         plot_style = (
             'seaborn-v0_8-whitegrid'
             if 'seaborn-v0_8-whitegrid' in plt.style.available
@@ -280,7 +320,6 @@ class MetricsNode(Node):
         ax3.set_ylabel('Speed [m/s]', color='teal')
         ax3_twin.set_ylabel('Heading Error [deg]', color='darkorange')
 
-        # Combine twin-axis legends
         lines = p1 + p2
         labels = [line.get_label() for line in lines]
         ax3.legend(lines, labels, loc='upper right', frameon=True)

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <geometry_msgs/msg/point_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
@@ -42,7 +43,7 @@ public:
     stop_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("/motion/report", 10);
 
     // Subscribers
-    waypoint_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
+    waypoint_sub_ = this->create_subscription<geometry_msgs::msg::PointStamped>(
       "/trajectory/waypoint", 10, std::bind(&WaypointControlNode::waypoint_callback, this, _1));
     position_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
       "holocean/odom", 10, std::bind(&WaypointControlNode::position_callback, this, _1));
@@ -103,7 +104,8 @@ private:
   rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr stop_pub_;
 
   // --- Subscribers ---
-  rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr waypoint_sub_, obstacle_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr waypoint_sub_;
+  rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr obstacle_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr position_sub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr distance_sub_, depth_sub_, angle_sub_;
   rclcpp::Subscription<sensor_msgs::msg::MagneticField>::SharedPtr sub_mag_;
@@ -173,11 +175,10 @@ private:
     obstacles_.assign(msg->data.begin(), msg->data.end());
   }
 
-  void waypoint_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
+  void waypoint_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
   {
-    if (msg->data.size() >= 3) {
-      waypoint_ = {msg->data[0], msg->data[1], msg->data[2]};
-      if (msg->data.size() >= 4) fixed_angle_ = msg->data[3];
+    if (msg->point.z != 0.0) {
+      waypoint_ = {msg->point.x, msg->point.y, msg->point.z};
       move_towards_waypoint(waypoint_);
     }
   }

@@ -2,6 +2,11 @@ base_tracking
    latency -> unstable rotations -> perception/planning???
  + Dont uses left in rotation    -> motion
     
+fix:
+look a multiple point route that goes to the as front as possible
+it stops at a point
+
+Problem: slowing down going corner at 100degree rotations
 
 navi_tracking
    unlooked points at corners
@@ -16,4 +21,4 @@ git remote add origin_pipe_track https://github.com/metinegearal/auv_pipe_tracki
 git branch -M main
 git push -u origin_pipe_track main
 
-https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Actions/Understanding-ROS2-Actions.html
+https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Actions/Understanding-ROS2-Actions.html1

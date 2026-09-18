@@ -1,4 +1,5 @@
 #include <cv_bridge/cv_bridge.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -27,7 +28,7 @@ public:
       std::bind(&PointExtractNavi::yaw_callback, this, std::placeholders::_1));
 
     waypoint_pub_ =
-      this->create_publisher<std_msgs::msg::Float32MultiArray>("/trajectory/waypoint", 10);
+      this->create_publisher<geometry_msgs::msg::PointStamped>("/trajectory/waypoint", 10);
 
     // --- NEW: Publisher for the Behavior Tree ---
     exploration_empty_pub_ =
@@ -121,10 +122,12 @@ private:
 
     RCLCPP_INFO(this->get_logger(), "Map Target: (%f, %f)", target_point.x, target_point.y);
 
-    std_msgs::msg::Float32MultiArray wp_msg;
-    std::vector<float> wp_data = {
-      static_cast<float>(target_point.x), static_cast<float>(target_point.y), -28.0f};
-    wp_msg.data = wp_data;
+    geometry_msgs::msg::PointStamped wp_msg;
+    wp_msg.header.stamp = msg->header.stamp;
+    wp_msg.header.frame_id = "map";
+    wp_msg.point.x = target_point.x;
+    wp_msg.point.y = target_point.y;
+    wp_msg.point.z = -28.0;
     waypoint_pub_->publish(wp_msg);
 
     // --- MAP VISUALIZATION ---
@@ -155,7 +158,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_cam_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr position_sub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr height_sub_, sub_mag_;
-  rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr waypoint_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr waypoint_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr exploration_empty_pub_;  // BT Publisher
 };
 
