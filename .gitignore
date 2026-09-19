@@ -1,6 +1,7 @@
+.github/
 build/
 install/
 log/
 *.pth__pycache__/
-HoloOcean/
 notes/
+HoloOcean/

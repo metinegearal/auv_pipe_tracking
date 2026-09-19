@@ -10,7 +10,7 @@ waypoint_control_node:
 point_extract:
   ros__parameters:
     look_ahead_pixels: 100
-    angle_weight: 0.5
+    angle_weight: 0.2 # reduce for more turning, increase for more straightness
 
 behaviour_node:
   ros__parameters:

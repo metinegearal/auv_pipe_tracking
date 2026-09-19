@@ -13,8 +13,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-
-        (os.path.join('share', package_name, 'models', 'segment'), 
+        (os.path.join('share', package_name, 'models', 'segment'),
          glob('pipe_track_perception/models/segment/*.pth')),
     ],
     install_requires=['setuptools'],
