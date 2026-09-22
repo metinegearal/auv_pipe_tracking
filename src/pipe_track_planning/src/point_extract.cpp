@@ -1,5 +1,6 @@
 #include <Eigen/Dense>
 #include <cv_bridge/cv_bridge.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -36,7 +37,7 @@ public:
 
     center_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("object/center", 10);
     waypoint_pub_ =
-      this->create_publisher<std_msgs::msg::Float32MultiArray>("/trajectory/waypoint", 10);
+      this->create_publisher<geometry_msgs::msg::PointStamped>("/trajectory/waypoint", 10);
 
     // NEW: Turn back publisher for the Behavior Tree
     turn_back_pub_ = this->create_publisher<std_msgs::msg::Bool>("/planning/turn_back", 10);
@@ -51,6 +52,7 @@ private:
   void cam_callback(const sensor_msgs::msg::Image::SharedPtr msg)
   {
     if (is_stopped_) return;
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     this->get_parameter("look_ahead_pixels", look_ahead_pixels_);
     this->get_parameter("angle_weight", angle_weight_);
@@ -145,10 +147,11 @@ private:
 
       // If the furthest point is physically lower on the screen than the nearest point,
       // the pipe is visually curling backwards into a U-turn.
-      if (far_y > near_y + 15.0) {
+      if (far_y > near_y + h_split * 0.5) {
         extreme_turn_counter_++;
       } else {
-        extreme_turn_counter_ = 0;  // Reset if it was a noise glitch
+        extreme_turn_counter_--;  // Reset if it was a noise glitch
+        extreme_turn_counter_ = std::max(0, extreme_turn_counter_);
 
         // Fixed the warning: Passing both variables to match the two %.1f formatters
         // RCLCPP_INFO(this->get_logger(), "Visual Turn Back counter reset. Far Y: %.1f, Near Y: %.1f", far_y, near_y);
@@ -168,11 +171,22 @@ private:
     turn_back_pub_->publish(tb_msg);
     // ------------------------------------------
 
-    std_msgs::msg::Float32MultiArray wp_msg;
-    std::vector<float> wp_data = {
-      static_cast<float>(world_point.x()), static_cast<float>(world_point.y()), -28.0f};
-    wp_msg.data = wp_data;
+    geometry_msgs::msg::PointStamped wp_msg;
+    wp_msg.header.stamp = msg->header.stamp;
+    wp_msg.header.frame_id = msg->header.frame_id;
+    wp_msg.point.x = world_point.x();
+    wp_msg.point.y = world_point.y();
+    wp_msg.point.z = -28.0;
     waypoint_pub_->publish(wp_msg);
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    double math_latency_ms =
+      std::chrono::duration<double, std::milli>(end_time - start_time).count();
+
+    if (math_latency_ms > 40.0) {
+      RCLCPP_WARN(
+        this->get_logger(), "Math Bottleneck: Point extraction took %.1f ms", math_latency_ms);
+    }
 
     // --- Debug Visualization ---
     cv::Mat debug_img;
@@ -200,9 +214,10 @@ private:
   double angle_weight_ = 0.5;
   trajectory_opt::TargetSmoother target_smoother_{0.25};
 
+  rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr waypoint_pub_;
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_cam_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr height_sub_, sub_mag_;
-  rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr center_pub_, waypoint_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr center_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr turn_back_pub_;
 };
 

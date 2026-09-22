@@ -1,3 +1,7 @@
+import os
+import time
+
+from ament_index_python.packages import get_package_share_directory
 import cv2
 from cv_bridge import CvBridge
 import numpy as np
@@ -25,13 +29,10 @@ class ObjectSegmentation(Node):
             classes=1,
         )
 
-        weight_path = (
-            '/home/metin-ege/AIEngineering/RoboticFocus/HoloSystem/'
-            'pipe_track_ros2/src/pipe_track_perception/'
-            'pipe_track_perception/models/segment/best_pipe_unet35.pth'
-        )
+        package_share_dir = get_package_share_directory('pipe_track_perception')
+        model_path = os.path.join(package_share_dir, 'models', 'segment', 'best_pipe_unet35.pth')
         self.model.load_state_dict(torch.load(
-            weight_path, map_location=self.device))
+            model_path, map_location=self.device))
         self.model.to(self.device)  # Force model to GPU
         self.model.eval()  # Set to evaluation mode
 
@@ -41,7 +42,7 @@ class ObjectSegmentation(Node):
         # --- 2. ROS SETUP ---
         self.bridge = CvBridge()
         self.sub_cam = self.create_subscription(
-            Image, 'holocean/cameraDown/image_raw', self.cam_callback, 10)
+            Image, 'holocean/cameraDown/image_raw', self.cam_callback, 1)
         self.mask_pub = self.create_publisher(Image, 'object/mask', 10)
         self.raw_mask_pub = self.create_publisher(Image, 'object/raw_mask', 10)
 
@@ -101,9 +102,19 @@ class ObjectSegmentation(Node):
 
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
 
+        start_time = time.perf_counter()
         mask, confidence = self.maskeImg(frame)
-        h, w = mask.shape
 
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+
+        # 3. Calculate internal latency
+        inference_time_ms = (time.perf_counter() - start_time) * 1000.0
+        self.get_logger().debug(
+            f'Inference time: {inference_time_ms:.2f} ms'
+        )
+
+        h, w = mask.shape
         filness_ratio = np.sum(mask > 0) / (w * h)
         if filness_ratio < 0.0025:
             self.get_logger().warn(

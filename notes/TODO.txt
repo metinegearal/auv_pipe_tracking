@@ -2,6 +2,11 @@ base_tracking
    latency -> unstable rotations -> perception/planning???
  + Dont uses left in rotation    -> motion
     
+fix:
+look a multiple point route that goes to the as front as possible
+it stops at a point
+
+Problem: slowing down going corner at 100degree rotations
 
 navi_tracking
    unlooked points at corners

@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-18
+
+- Resolved high-latency oscillation bug (#1) by replacing iterative image skeletonization with a fast Distance Transform centerline extraction, reducing planning latency from >1000ms to <10ms.
+- Fixed ROS 2 subscriber queue backlog in the perception node by reducing the camera mask queue size to 1, guaranteeing real-time frame evaluation.
+- Implemented exact end-to-end pipeline latency tracking by propagating camera frame timestamps through `geometry_msgs/msg/PointStamped`.
+- Tuned coordinate-free planner `angle_weight` from 0.5 to 0.2, improving mean AUV tracking velocity from 0.65 m/s to 0.73 m/s and reducing hesitation on sharp turns.
+## 2026-09-17
+
+- Added the `TORCH_INDEX_URL` Docker build argument and Compose passthrough so the PyTorch CUDA wheel channel can be selected for the host GPU and NVIDIA driver.
+- Documented how to build with an alternate PyTorch CUDA channel, including stable CUDA 12.4 wheels.
+- Documented the BauRov-v2.3.0 simulation world asset and automated host-side installation commands.
+
 ## 2026-09-15
 
 - Added continuous trajectory optimization to the coordinate-free planner using dynamic look-ahead, cubic Bezier spatial smoothing, and exponential temporal smoothing.

@@ -1,0 +1,12 @@
+================ TRACKING METRICS REPORT ================
+1. Cross-Track Error (RMSE)   : 0.844 m
+2. Max Cross-Track Error      : 2.809 m
+3. Mean Velocity (Momentum)   : 0.651 ± 0.292 m/s
+4. Mean Heading Error         : 36.50 deg
+5. Terminal Position Error    : 0.682 m -> Failed
+---------------------------------------------------------
+   Avg Perception Latency     : 34.1 ms
+   Avg Planning Latency       : 9.2 ms
+   Total Pipeline Latency     : 43.3 ms
+   Mission Execution Time     : 71.6 s
+=========================================================
