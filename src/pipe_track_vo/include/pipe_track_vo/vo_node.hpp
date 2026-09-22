@@ -1,17 +1,19 @@
 #pragma once
 
-#include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/image.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <std_msgs/msg/float32.hpp>
 #include <cv_bridge/cv_bridge.hpp>
 #include <image_transport/image_transport.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <std_msgs/msg/float32.hpp>
 
 #include "pipe_track_vo/visual_odometry.hpp"
 
-namespace pipe_track_vo {
+namespace pipe_track_vo
+{
 
-class VoNode : public rclcpp::Node {
+class VoNode : public rclcpp::Node
+{
 public:
   VoNode();
   ~VoNode() = default;
@@ -43,4 +45,4 @@ private:
   bool use_depth_scaling_;
 };
 
-} // namespace pipe_track_vo
+}  // namespace pipe_track_vo

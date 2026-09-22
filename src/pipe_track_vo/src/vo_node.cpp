@@ -1,14 +1,13 @@
 #include "pipe_track_vo/vo_node.hpp"
+
 #include <opencv2/imgproc.hpp>
 
-namespace pipe_track_vo {
-
-VoNode::VoNode()
-: Node("vo_node"),
-  current_depth_(1.0),
-  first_frame_(true)
+namespace pipe_track_vo
 {
-  this->declare_parameter<std::string>("camera_topic", "object/mask");
+
+VoNode::VoNode() : Node("vo_node"), current_depth_(1.0), first_frame_(true)
+{
+  this->declare_parameter<std::string>("camera_topic", "object/raw_mask");
   this->declare_parameter<std::string>("depth_topic", "holocean/depth/distance");
   this->declare_parameter<std::string>("odom_topic", "perception/vo_odom");
   this->declare_parameter<std::string>("odom_frame_id", "odom");
@@ -52,13 +51,15 @@ VoNode::VoNode()
   RCLCPP_INFO(this->get_logger(), "Publishing VO to: %s", odom_topic_.c_str());
 }
 
-void VoNode::depth_callback(const std_msgs::msg::Float32::SharedPtr msg) {
+void VoNode::depth_callback(const std_msgs::msg::Float32::SharedPtr msg)
+{
   if (msg->data > 0.05f) {
     current_depth_ = static_cast<double>(msg->data);
   }
 }
 
-void VoNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
+void VoNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
+{
   cv_bridge::CvImagePtr cv_ptr;
   try {
     if (msg->encoding == sensor_msgs::image_encodings::MONO8) {
@@ -101,7 +102,8 @@ void VoNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
   publish_debug_image(cv_ptr->image, current_stamp);
 }
 
-void VoNode::publish_odometry(const rclcpp::Time & stamp) {
+void VoNode::publish_odometry(const rclcpp::Time & stamp)
+{
   const auto & state = vo_engine_->get_state();
 
   nav_msgs::msg::Odometry msg;
@@ -109,9 +111,14 @@ void VoNode::publish_odometry(const rclcpp::Time & stamp) {
   msg.header.frame_id = odom_frame_id_;
   msg.child_frame_id = base_frame_id_;
 
-  msg.pose.pose.position.x = state.position.x();
-  msg.pose.pose.position.y = state.position.y();
-  msg.pose.pose.position.z = state.position.z();
+  // --- CORRECT MAPPING: Downward Camera to AUV Frame ---
+  // AUV X (Forward) = Optical -Y (Up the image)
+  // AUV Y (Left)    = Optical -X (Left in the image)
+  // AUV Z (Up)      = Optical -Z (Away from the sea floor)
+
+  msg.pose.pose.position.x = -state.position.y();
+  msg.pose.pose.position.y = -state.position.x();
+  msg.pose.pose.position.z = -state.position.z();
 
   msg.pose.pose.orientation.w = state.orientation.w();
   msg.pose.pose.orientation.x = state.orientation.x();
@@ -125,9 +132,9 @@ void VoNode::publish_odometry(const rclcpp::Time & stamp) {
   msg.pose.covariance[28] = 0.005;
   msg.pose.covariance[35] = 0.005;
 
-  msg.twist.twist.linear.x = state.linear_velocity.x();
-  msg.twist.twist.linear.y = state.linear_velocity.y();
-  msg.twist.twist.linear.z = state.linear_velocity.z();
+  msg.twist.twist.linear.x = -state.linear_velocity.y();
+  msg.twist.twist.linear.y = -state.linear_velocity.x();
+  msg.twist.twist.linear.z = -state.linear_velocity.z();
 
   msg.twist.twist.angular.x = state.angular_velocity.x();
   msg.twist.twist.angular.y = state.angular_velocity.y();
@@ -136,7 +143,8 @@ void VoNode::publish_odometry(const rclcpp::Time & stamp) {
   odom_pub_->publish(msg);
 }
 
-void VoNode::publish_debug_image(const cv::Mat & current_image, const rclcpp::Time & stamp) {
+void VoNode::publish_debug_image(const cv::Mat & current_image, const rclcpp::Time & stamp)
+{
   if (debug_img_pub_.getNumSubscribers() == 0) {
     return;
   }
@@ -164,10 +172,10 @@ void VoNode::publish_debug_image(const cv::Mat & current_image, const rclcpp::Ti
   debug_img_pub_.publish(out_msg);
 }
 
-} // namespace pipe_track_vo
+}  // namespace pipe_track_vo
 
-
-int main(int argc, char ** argv) {
+int main(int argc, char ** argv)
+{
   rclcpp::init(argc, argv);
   auto node = std::make_shared<pipe_track_vo::VoNode>();
   rclcpp::spin(node);

@@ -1,0 +1,26 @@
+================ TRACKING METRICS REPORT ================
+1. Cross-Track Error (RMSE)   : 1.993 m
+2. Max Cross-Track Error      : 2.805 m
+3. Mean Velocity (Momentum)   : 0.574 ± 0.309 m/s
+4. Mean Heading Error         : 12.69 deg
+5. Terminal Position Error    : 27.325 m
+---------------------------------------------------------
+   Avg Perception Latency     : 39.2 ms
+   Avg Planning Latency       : 0.0 ms
+   Total Pipeline Latency     : 0.0 ms
+   Mission Execution Time     : 5.7 s
+=========================================================
+5b. Est. vs Ground-Truth RMSE: 0.589 m (Max: 0.996 m)
+
+[evaluation_system-6] [INFO] [1790066550.745411241] [evaluation_system]: 🏁 Mission complete received. Evaluating...
+[evaluation_system-6] [INFO] [1790066550.749499821] [evaluation_system]: 5b. Est. vs Ground-Truth RMSE: 0.687 m (Max: 0.811 m)
+[evaluation_system-6] [INFO] [1790066550.750869358] [evaluation_system]: ================ TRACKING METRICS REPORT ================
+[evaluation_system-6] [INFO] [1790066550.752130868] [evaluation_system]: 1. Cross-Track Error (RMSE)   : 1.214 m
+[evaluation_system-6] [INFO] [1790066550.753497617] [evaluation_system]: 2. Max Cross-Track Error       : 2.805 m
+[evaluation_system-6] [INFO] [1790066550.754781590] [evaluation_system]: 3. Mean Velocity (Momentum)    : 0.720 ± 0.254 m/s
+[evaluation_system-6] [INFO] [1790066550.756544335] [evaluation_system]: 4. Mean Heading Error          : 26.40 deg
+[evaluation_system-6] [INFO] [1790066550.757963511] [evaluation_system]: 5. Terminal Position Error     : 20.918 m
+[evaluation_system-6] [INFO] [1790066550.759223802] [evaluation_system]:    Mission Execution Time      : 27.2 s
+[evaluation_system-6] [INFO] [1790066550.760464366] [evaluation_system]: =========================================================
+
+5b. Est. vs Ground-Truth RMSE: 0.781 m (Max: 1.137 m)

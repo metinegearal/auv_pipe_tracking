@@ -1,23 +1,28 @@
 #pragma once
 
-#include "pipe_track_vo/feature_tracker.hpp"
 #include <Eigen/Dense>
-#include <opencv2/core.hpp>
 #include <memory>
+#include <opencv2/core.hpp>
 
-namespace pipe_track_vo {
+#include "pipe_track_vo/feature_tracker.hpp"
 
-struct OdometryState {
+namespace pipe_track_vo
+{
+
+struct OdometryState
+{
   Eigen::Vector3d position;
   Eigen::Quaterniond orientation;
   Eigen::Vector3d linear_velocity;
   Eigen::Vector3d angular_velocity;
 };
 
-class VisualOdometry {
+class VisualOdometry
+{
 public:
-  VisualOdometry(double fx, double fy, double cx, double cy,
-                 int max_features = 400, double min_inlier_ratio = 0.20);
+  VisualOdometry(
+    double fx, double fy, double cx, double cy, int max_features = 400,
+    double min_inlier_ratio = 0.20);
   ~VisualOdometry() = default;
 
   bool process_frame(const cv::Mat & image, double dt, double scale_estimate);
@@ -39,4 +44,4 @@ private:
   bool initialized_;
 };
 
-} // namespace pipe_track_vo
+}  // namespace pipe_track_vo

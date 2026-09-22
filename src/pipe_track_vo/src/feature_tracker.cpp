@@ -1,7 +1,9 @@
 #include "pipe_track_vo/feature_tracker.hpp"
+
 #include <opencv2/imgproc.hpp>
 
-namespace pipe_track_vo {
+namespace pipe_track_vo
+{
 
 FeatureTracker::FeatureTracker(int max_features, double quality_level, double min_distance)
 : max_features_(max_features),
@@ -11,24 +13,15 @@ FeatureTracker::FeatureTracker(int max_features, double quality_level, double mi
 {
 }
 
-void FeatureTracker::detect_features(const cv::Mat & image, std::vector<cv::Point2f> & points) {
+void FeatureTracker::detect_features(const cv::Mat & image, std::vector<cv::Point2f> & points)
+{
   cv::goodFeaturesToTrack(
-    image,
-    points,
-    max_features_,
-    quality_level_,
-    min_distance_,
-    cv::noArray(),
-    3,
-    false,
-    0.04
-  );
+    image, points, max_features_, quality_level_, min_distance_, cv::noArray(), 3, false, 0.04);
 }
 
-bool FeatureTracker::track(const cv::Mat & current_image,
-                           const cv::Mat & camera_matrix,
-                           cv::Mat & relative_rotation,
-                           cv::Mat & relative_translation)
+bool FeatureTracker::track(
+  const cv::Mat & current_image, const cv::Mat & camera_matrix, cv::Mat & relative_rotation,
+  cv::Mat & relative_translation)
 {
   if (!is_initialized_) {
     detect_features(current_image, prev_points_);
@@ -43,18 +36,8 @@ bool FeatureTracker::track(const cv::Mat & current_image,
   std::vector<uchar> status;
   std::vector<float> err;
   cv::calcOpticalFlowPyrLK(
-    prev_image_,
-    current_image,
-    prev_points_,
-    curr_points_,
-    status,
-    err,
-    cv::Size(21, 21),
-    3,
-    cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30, 0.01),
-    0,
-    1e-4
-  );
+    prev_image_, current_image, prev_points_, curr_points_, status, err, cv::Size(21, 21), 3,
+    cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30, 0.01), 0, 1e-4);
 
   std::vector<cv::Point2f> matched_prev;
   std::vector<cv::Point2f> matched_curr;
@@ -63,9 +46,9 @@ bool FeatureTracker::track(const cv::Mat & current_image,
 
   for (size_t i = 0; i < status.size(); ++i) {
     if (status[i]) {
-      if (curr_points_[i].x >= 0 && curr_points_[i].x < current_image.cols &&
-          curr_points_[i].y >= 0 && curr_points_[i].y < current_image.rows)
-      {
+      if (
+        curr_points_[i].x >= 0 && curr_points_[i].x < current_image.cols &&
+        curr_points_[i].y >= 0 && curr_points_[i].y < current_image.rows) {
         matched_prev.push_back(prev_points_[i]);
         matched_curr.push_back(curr_points_[i]);
       }
@@ -80,14 +63,7 @@ bool FeatureTracker::track(const cv::Mat & current_image,
 
   cv::Mat inlier_mask_mat;
   cv::Mat E = cv::findEssentialMat(
-    matched_curr,
-    matched_prev,
-    camera_matrix,
-    cv::RANSAC,
-    0.999,
-    1.0,
-    inlier_mask_mat
-  );
+    matched_curr, matched_prev, camera_matrix, cv::RANSAC, 0.999, 1.0, inlier_mask_mat);
 
   if (E.empty() || E.rows != 3 || E.cols != 3) {
     detect_features(current_image, prev_points_);
@@ -96,15 +72,8 @@ bool FeatureTracker::track(const cv::Mat & current_image,
   }
 
   cv::Mat R, t;
-  int inliers = cv::recoverPose(
-    E,
-    matched_curr,
-    matched_prev,
-    camera_matrix,
-    R,
-    t,
-    inlier_mask_mat
-  );
+  int inliers =
+    cv::recoverPose(E, matched_curr, matched_prev, camera_matrix, R, t, inlier_mask_mat);
 
   if (inliers < 10) {
     detect_features(current_image, prev_points_);
@@ -132,4 +101,4 @@ bool FeatureTracker::track(const cv::Mat & current_image,
   return true;
 }
 
-} // namespace pipe_track_vo
+}  // namespace pipe_track_vo

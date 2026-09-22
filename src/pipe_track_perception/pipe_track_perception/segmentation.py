@@ -43,6 +43,7 @@ class ObjectSegmentation(Node):
         self.sub_cam = self.create_subscription(
             Image, 'holocean/cameraDown/image_raw', self.cam_callback, 10)
         self.mask_pub = self.create_publisher(Image, 'object/mask', 10)
+        self.raw_mask_pub = self.create_publisher(Image, 'object/raw_mask', 10)
 
         self.magnet = [0, 0, 0]
         self.yaw = 0.0
@@ -113,6 +114,9 @@ class ObjectSegmentation(Node):
 
         # Use pre-allocated kernel
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, self.morph_kernel)
+        raw_mask_img = self.bridge.cv2_to_imgmsg(mask, encoding='mono8')
+        raw_mask_img.header = msg.header
+        self.raw_mask_pub.publish(raw_mask_img)
 
         contours, _ = cv2.findContours(
             mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)

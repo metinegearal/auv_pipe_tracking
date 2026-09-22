@@ -1,22 +1,23 @@
 #pragma once
 
+#include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/features2d.hpp>
-#include <opencv2/calib3d.hpp>
 #include <opencv2/video/tracking.hpp>
 #include <vector>
 
-namespace pipe_track_vo {
+namespace pipe_track_vo
+{
 
-class FeatureTracker {
+class FeatureTracker
+{
 public:
   FeatureTracker(int max_features = 400, double quality_level = 0.01, double min_distance = 10.0);
   ~FeatureTracker() = default;
 
-  bool track(const cv::Mat & current_image,
-             const cv::Mat & camera_matrix,
-             cv::Mat & relative_rotation,
-             cv::Mat & relative_translation);
+  bool track(
+    const cv::Mat & current_image, const cv::Mat & camera_matrix, cv::Mat & relative_rotation,
+    cv::Mat & relative_translation);
 
   const std::vector<cv::Point2f> & get_previous_points() const { return prev_points_; }
   const std::vector<cv::Point2f> & get_current_points() const { return curr_points_; }
@@ -36,4 +37,4 @@ private:
   bool is_initialized_;
 };
 
-} // namespace pipe_track_vo
+}  // namespace pipe_track_vo
