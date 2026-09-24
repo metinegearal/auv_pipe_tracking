@@ -39,7 +39,7 @@ class MetricsNode(Node):
             MagneticField, 'holocean/mag', self.magnetometer_cb, 10
         )
         self.sub_est = self.create_subscription(
-            Odometry, 'auv/estimated_odom', self.est_cb, 10
+            Odometry, 'estimation/odom', self.est_cb, 10
         )
         self.sub_finish = self.create_subscription(
             Bool, '/movement/finished_execution', self.finish_cb, 10
@@ -217,6 +217,18 @@ class MetricsNode(Node):
         )
         total_time = self.timestamps[-1] if self.timestamps else 0.0
 
+        # estimation vs gt position error
+        if self.est_positions and self.gt_positions:
+            # Align arrays to the shortest length for 1:1 comparison
+            min_len = min(len(self.gt_positions), len(self.est_positions))
+            gt_arr = np.array(self.gt_positions[:min_len])
+            est_arr = np.array(self.est_positions[:min_len])
+
+            # Calculate point-to-point Euclidean distances
+            est_errors = np.linalg.norm(gt_arr - est_arr, axis=1)
+            rmse_estimation = float(np.sqrt(np.mean(est_errors ** 2)))
+            max_est_error = float(np.max(est_errors))
+
         # Calculate Latencies
         avg_perception = (
             float(np.mean(self.perception_latencies))
@@ -234,6 +246,7 @@ class MetricsNode(Node):
             f'{std_speed:.3f} m/s\n'
             f'4. Mean Heading Error         : {mean_heading_err:.2f} deg\n'
             f'5. Terminal Position Error    : {terminal_error:.3f} m\n'
+            f'6. Est. vs GT RMSE: {rmse_estimation:.3f} m (Max: {max_est_error:.3f} m)'
             '---------------------------------------------------------\n'
             f'   Avg Perception Latency     : {avg_perception:.1f} ms\n'
             f'   Avg Planning Latency       : {avg_planning:.1f} ms\n'

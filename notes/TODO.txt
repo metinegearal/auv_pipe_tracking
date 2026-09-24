@@ -21,4 +21,7 @@ git remote add origin_pipe_track https://github.com/metinegearal/auv_pipe_tracki
 git branch -M main
 git push -u origin_pipe_track main
 
-https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Actions/Understanding-ROS2-Actions.html1
+https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Actions/Understanding-ROS2-Actions.html
+
+
+make a custom merge of VO(more texture+) and death_reckon so it will get best accuracy

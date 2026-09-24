@@ -1,0 +1,13 @@
+estimation_node:
+  ros__parameters:
+    # Gravity constant (HoloOcean defaults to standard Z-down or Z-up depending on config)
+    gravity_magnitude: 9.81
+    
+    # Noise standard deviations
+    noise:
+      imu_accelerometer: 0.01
+      imu_gyroscope: 0.001
+      imu_integration: 0.0001
+      dvl_velocity: 0.05       # Trust DVL heavily for speed
+      vo_position: 0.1         # Trust camera slightly less for absolute position
+      vo_orientation: 0.05

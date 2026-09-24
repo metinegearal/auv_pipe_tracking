@@ -18,7 +18,7 @@ public:
     sub_cam_ = this->create_subscription<sensor_msgs::msg::Image>(
       "object/mask", 10, std::bind(&PointExtractNavi::cam_callback, this, std::placeholders::_1));
     position_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-      "holocean/odom", 10,
+      "estimation/odom", 10,
       std::bind(&PointExtractNavi::position_callback, this, std::placeholders::_1));
     height_sub_ = this->create_subscription<std_msgs::msg::Float32>(
       "holocean/depth/distance", 10,

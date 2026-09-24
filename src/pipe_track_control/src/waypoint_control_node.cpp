@@ -46,7 +46,7 @@ public:
     waypoint_sub_ = this->create_subscription<geometry_msgs::msg::PointStamped>(
       "/trajectory/waypoint", 10, std::bind(&WaypointControlNode::waypoint_callback, this, _1));
     position_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-      "holocean/odom", 10, std::bind(&WaypointControlNode::position_callback, this, _1));
+      "estimation/odom", 10, std::bind(&WaypointControlNode::position_callback, this, _1));
     distance_sub_ = this->create_subscription<std_msgs::msg::Float32>(
       "holocean/depth/distance", 10, std::bind(&WaypointControlNode::dist_callback, this, _1));
     depth_sub_ = this->create_subscription<std_msgs::msg::Float32>(
