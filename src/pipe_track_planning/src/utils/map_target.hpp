@@ -12,8 +12,8 @@ class TargetSelector
 {
 public:
   cv::Point2f select(
-    const std::vector<cv::Point2f> & frontier_cells,
-    const cv::Point2f & position_world, double resolution)
+    const std::vector<cv::Point2f> & frontier_cells, const cv::Point2f & position_world,
+    double resolution)
   {
     if (frontier_cells.empty()) {
       smoother_.reset();
@@ -31,8 +31,8 @@ public:
     }
 
     // Keep the existing smoothing in cell coordinates, preserving 0.25 m precision.
-    const cv::Point smoothed_cell = smoother_.smooth(
-      cv::Point(std::round(target_cell.x), std::round(target_cell.y)));
+    const cv::Point smoothed_cell =
+      smoother_.smooth(cv::Point(std::round(target_cell.x), std::round(target_cell.y)));
     return cv::Point2f(smoothed_cell.x * resolution, smoothed_cell.y * resolution);
   }
 

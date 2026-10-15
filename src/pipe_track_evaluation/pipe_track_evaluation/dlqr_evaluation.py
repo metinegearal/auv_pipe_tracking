@@ -2,10 +2,9 @@
 
 import json
 
+from pipe_track_evaluation.dlqr_analysis import write_outputs
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
-
-from pipe_track_evaluation.dlqr_analysis import write_outputs
 
 
 class DlqrEvaluation:

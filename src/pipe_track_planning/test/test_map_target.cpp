@@ -10,8 +10,9 @@ namespace
 void expect_point(const cv::Point2f & actual, const cv::Point2f & expected, const char * label)
 {
   if (cv::norm(actual - expected) > 1e-5) {
-    throw std::runtime_error(std::string(label) + ": unexpected target (" +
-      std::to_string(actual.x) + ", " + std::to_string(actual.y) + ")");
+    throw std::runtime_error(
+      std::string(label) + ": unexpected target (" + std::to_string(actual.x) + ", " +
+      std::to_string(actual.y) + ")");
   }
 }
 }  // namespace
@@ -40,12 +41,14 @@ int main()
 
     // Nearest-point selection must not depend on the arbitrary map origin.
     map_navigation::TargetSelector shifted;
-    expect_point(shifted.select({{19, -3}, {56, -20}}, pose + cv::Point2f(-25, 50), 0.25),
-      {14, -5}, "translated map origin");
+    expect_point(
+      shifted.select({{19, -3}, {56, -20}}, pose + cv::Point2f(-25, 50), 0.25), {14, -5},
+      "translated map origin");
 
     map_navigation::TargetSelector different_resolution;
-    expect_point(different_resolution.select({{20, -20}, {4, -4}}, {9.9f, -9.9f}, 0.5),
-      {10, -10}, "nondefault resolution");
+    expect_point(
+      different_resolution.select({{20, -20}, {4, -4}}, {9.9f, -9.9f}, 0.5), {10, -10},
+      "nondefault resolution");
 
     map_navigation::TargetSelector origin;
     expect_point(origin.select({}, {0, 0}, 0.25), {0, 0}, "zero position hold");

@@ -1,12 +1,11 @@
 """Numerical regression tests using analytical responses and independent DARE gains."""
 
 import numpy as np
-import pytest
-from scipy.linalg import expm, solve_discrete_are
-
 from pipe_track_evaluation.dlqr_analysis import (
     analyze_model, frequency_metrics, matrix_metrics, step_metrics, write_outputs,
 )
+import pytest
+from scipy.linalg import expm, solve_discrete_are
 
 
 def nominal_model():

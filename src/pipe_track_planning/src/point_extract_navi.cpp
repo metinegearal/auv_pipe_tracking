@@ -74,8 +74,8 @@ private:
 
     // Frontier points are cell indices; the selector returns a target in metres.
     const auto frontier_cells = explorer_.get_scan_point();
-    const cv::Point2f target_point = target_selector_.select(
-      frontier_cells, current_position_, explorer_.MAP_RESOLUTION);
+    const cv::Point2f target_point =
+      target_selector_.select(frontier_cells, current_position_, explorer_.MAP_RESOLUTION);
     bool is_exploration_empty = false;  // Default for BT
 
     if (!frontier_cells.empty()) {

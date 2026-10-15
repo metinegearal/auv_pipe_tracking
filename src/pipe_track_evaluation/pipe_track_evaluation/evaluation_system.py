@@ -6,13 +6,12 @@ from geometry_msgs.msg import PointStamped
 import matplotlib.pyplot as plt
 from nav_msgs.msg import Odometry
 import numpy as np
+from pipe_track_evaluation.dlqr_evaluation import DlqrEvaluation
+from pipe_track_evaluation.metrics_reporting import MetricsReporting
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, MagneticField
 from std_msgs.msg import Bool
-
-from pipe_track_evaluation.dlqr_evaluation import DlqrEvaluation
-from pipe_track_evaluation.metrics_reporting import MetricsReporting
 
 
 class MetricsNode(Node):
