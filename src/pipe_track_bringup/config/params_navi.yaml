@@ -10,3 +10,13 @@ waypoint_control_node:
 behaviour_node:
   ros__parameters:
     tree_xml_file: "map_mission.xml"
+
+dlqr_control_node:
+  ros__parameters:
+    update_period: 0.03333333333333333
+    mass: 31.02
+    damping: 3.0
+    state_weights: [800.0, 800.0, 800.0, 160.0, 160.0, 160.0]
+    velocity_weights: [10.0, 10.0, 10.0]
+    force_weights: [0.1, 0.1, 0.1]
+    max_motor_force: 40.0

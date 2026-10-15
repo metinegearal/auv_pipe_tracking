@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-15
+- Added a discrete LQR controller with position and velocity feedback, waypoint braking, eight-thruster allocation, force limiting, and sensor timeout checks; selected it in navigation bringup.
+- Exposed DLQR model and tuning weights in bringup configuration and configured navigation to use world-coordinate waypoints.
+- Added nominal DLQR analysis through helper modules attached to the existing evaluation node: damping ratios, peak response, 63% crossing time, 2% settling time, 10–90% rise time, controllability/observability ranks and singular values, phase/gain margins, and sensitivity peak.
+- Added a single DLQR text report and a combined sensitivity/Nichols plot page using the controller's published model and gains.
+- Made tracking summaries and CSV data refresh every 5 seconds, retained final report/plot generation on mission completion or Ctrl+C, handled missing estimator samples, and added retries for failed final saves.
+- Fixed map target selection to compare frontier cells and vehicle position in consistent world units while preserving target smoothing and the current-position fallback when exploration is empty.
+- Re-enabled the visual odometry node in navigation bringup and VO measurement processing in the estimator.
+- Added numerical DLQR, report lifecycle, and map target regression tests, plus controller and evaluation documentation.
+
 ## 2026-09-22
 - Absolute Trajectory Error (ATE) RMSE calculation in metrics_node to compare Estimated Odometry against Ground-Truth.
 - GTSAM graph based location estimation/fusion is added to the system (`pipe_track_estimation` pkg)

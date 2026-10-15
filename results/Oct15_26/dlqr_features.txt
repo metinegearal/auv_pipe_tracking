@@ -1,0 +1,89 @@
+DLQR NOMINAL MODEL EVALUATION
+
+1. Model and definitions
+dt=0.0333333333 s; mass=31.02 kg; drag=3 N/(m/s)
+Configured mode=state; waypoint_cruise_speed=2 m/s
+Both feedback modes are evaluated independently on X/Y/Z.
+state: unit position step (1 m), zero velocity reference; velocity: 1 m/s step.
+Nominal linear model: excludes saturation, yaw, sensor/transport delays,
+nonlinear hydrodynamics, waypoint shaping and switching between modes.
+L(z)=K(zI-A)^-1 B at the force input; S(z)=1/(1+L(z)).
+PM is additional phase lag in degrees at |L|=1, not a time in seconds.
+GM is 1/|L| at negative-real L (-180 deg modulo 360), including Nyquist.
+The limiting margin is the crossing closest to instability.
+Frequency search: 1e-9 rad/sample to pi, refined crossings/local peaks plus DC.
+
+2. Closed-loop damping and step response
+Damping ratios use s=log(z)/dt, zeta=-Re(s)/|s| for each closed-loop pole.
+Real positive stable poles have zeta=1; t63 is a first 63% crossing,
+not necessarily a single physical time constant for a multi-pole system.
+Peak is the largest sampled output over the reported horizon.
+ts: first sample staying within +/-2% of ideal=1 through the horizon.
+tr: first 10% to first 90% crossings; thresholds use linear interpolation.
+N/A: unstable response, threshold not reached, or not settled in horizon.
+
+state/X: stable=True; horizon=30 s
+  poles(z)=0.9094293+0j, 0.9850274+0j
+  damping ratios=1, 1
+  peak=0.999998; t63=2.57887 s; ts(2%)=9.03333 s; tr(10-90%)=4.9613 s
+
+state/Y: stable=True; horizon=30 s
+  poles(z)=0.9094293+0j, 0.9850274+0j
+  damping ratios=1, 1
+  peak=0.999998; t63=2.57887 s; ts(2%)=9.03333 s; tr(10-90%)=4.9613 s
+
+state/Z: stable=True; horizon=30 s
+  poles(z)=0.9094293+0j, 0.9850274+0j
+  damping ratios=1, 1
+  peak=0.999998; t63=2.57887 s; ts(2%)=9.03333 s; tr(10-90%)=4.9613 s
+
+velocity/X: stable=True; horizon=35.6667 s
+  poles(z)=0.9888439+0j
+  damping ratios=1
+  peak=0.999994; t63=2.95416 s; ts(2%)=11.6333 s; tr(10-90%)=6.52836 s
+
+velocity/Y: stable=True; horizon=35.6667 s
+  poles(z)=0.9888439+0j
+  damping ratios=1
+  peak=0.999994; t63=2.95416 s; ts(2%)=11.6333 s; tr(10-90%)=6.52836 s
+
+velocity/Z: stable=True; horizon=35.6667 s
+  poles(z)=0.9888439+0j
+  damping ratios=1
+  peak=0.999994; t63=2.95416 s; ts(2%)=11.6333 s; tr(10-90%)=6.52836 s
+
+3. Controllability and observability
+Ctrb=[B AB ... A^(n-1)B]; Obsv=[C; CA; ...; CA^(n-1)].
+C=I assumes all modeled states are available from velocity/position sensors.
+Velocity mode analyzes only velocity states; position integrators are excluded.
+Rank uses NumPy SVD tolerance; singular values depend on units/scaling.
+full plant controllability: rank=6/6; singular values=[0.00261995, 0.00261995, 0.00261995, 0.000149093, 0.000149093, 0.000149093]
+full plant observability: rank=6/6; singular values=[2.54553, 2.54553, 2.54553, 2.34201, 2.34201, 2.34201]
+state/X controllability: rank=2/2; singular values=[0.00151563, 2.53139e-05]
+state/X observability: rank=2/2; singular values=[1.42504, 1.40141]
+state/Y controllability: rank=2/2; singular values=[0.00151563, 2.53139e-05]
+state/Y observability: rank=2/2; singular values=[1.42504, 1.40141]
+state/Z controllability: rank=2/2; singular values=[0.00151563, 2.53139e-05]
+state/Z observability: rank=2/2; singular values=[1.42504, 1.40141]
+velocity/X controllability: rank=1/1; singular values=[0.00107285]
+velocity/X observability: rank=1/1; singular values=[1]
+velocity/Y controllability: rank=1/1; singular values=[0.00107285]
+velocity/Y observability: rank=1/1; singular values=[1]
+velocity/Z controllability: rank=1/1; singular values=[0.00107285]
+velocity/Z observability: rank=1/1; singular values=[1]
+
+4. Frequency margins and sensitivity peak
+Frequencies are rad/s; Ms is max |S| over DC through Nyquist.
+No phase crossover: GM=inf; no unity-gain crossover: PM=N/A.
+state/X: PM=81.4581 deg at 3.07979 rad/s; GM=19.6443 x / 25.8647 dB at 94.2478 rad/s
+  Ms=1.05364 / 0.453809 dB at 94.2478 rad/s
+state/Y: PM=81.4581 deg at 3.07979 rad/s; GM=19.6443 x / 25.8647 dB at 94.2478 rad/s
+  Ms=1.05364 / 0.453809 dB at 94.2478 rad/s
+state/Z: PM=81.4581 deg at 3.07979 rad/s; GM=19.6443 x / 25.8647 dB at 94.2478 rad/s
+  Ms=1.05364 / 0.453809 dB at 94.2478 rad/s
+velocity/X: PM=113.713 deg at 0.218026 rad/s; GM=251.559 x / 48.0128 dB at 94.2478 rad/s
+  Ms=1.00399 / 0.034597 dB at 94.2478 rad/s
+velocity/Y: PM=113.713 deg at 0.218026 rad/s; GM=251.559 x / 48.0128 dB at 94.2478 rad/s
+  Ms=1.00399 / 0.034597 dB at 94.2478 rad/s
+velocity/Z: PM=113.713 deg at 0.218026 rad/s; GM=251.559 x / 48.0128 dB at 94.2478 rad/s
+  Ms=1.00399 / 0.034597 dB at 94.2478 rad/s
