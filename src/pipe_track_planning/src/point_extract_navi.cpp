@@ -8,7 +8,7 @@
 #include <std_msgs/msg/float32_multi_array.hpp>
 
 #include "utils/explore_2d.hpp"
-#include "utils/traj_opt.hpp"
+#include "utils/map_target.hpp"
 
 class PointExtractNavi : public rclcpp::Node
 {
@@ -72,27 +72,16 @@ private:
     // --- MAP INTEGRATION ---
     explorer_.add_points(points, cv::Size(w, h), current_height_, current_position_, yaw_);
 
-    // Extract the final point from the map
-    auto points_final = explorer_.get_scan_point();
-    cv::Point2f target_point;
+    // Frontier points are cell indices; the selector returns a target in metres.
+    const auto frontier_cells = explorer_.get_scan_point();
+    const cv::Point2f target_point =
+      target_selector_.select(frontier_cells, current_position_, explorer_.MAP_RESOLUTION);
     bool is_exploration_empty = false;  // Default for BT
 
-    if (!points_final.empty()) {
+    if (!frontier_cells.empty()) {
       // We successfully extracted points. Exploration is officially running.
       has_started_exploration_ = true;
-
-      target_point = points_final[0];
-      float closest_distance = cv::norm(target_point - current_position_);
-      for (const auto & point : points_final) {
-        const float distance = cv::norm(point - current_position_);
-        if (distance < closest_distance) {
-          target_point = point;
-          closest_distance = distance;
-        }
-      }
     } else {
-      target_point = current_position_;
-
       if (has_started_exploration_) {
         is_exploration_empty = true;
         RCLCPP_WARN(this->get_logger(), "🏁 Map fully explored! Sending stop signal to BT.");
@@ -101,24 +90,10 @@ private:
       }
     }
 
-    if (!is_exploration_empty) {
-      // Convert to standard Point for the smoother, then back to Point2f
-      cv::Point cv_target(std::round(target_point.x), std::round(target_point.y));
-      cv::Point smooth_target = target_smoother_.smooth(cv_target);
-      target_point.x = smooth_target.x;
-      target_point.y = smooth_target.y;
-    } else {
-      target_smoother_.reset();  // Clear history if we stop
-    }
-
     // Publish to Behavior Tree
     std_msgs::msg::Bool bt_msg;
     bt_msg.data = is_exploration_empty;
     exploration_empty_pub_->publish(bt_msg);
-
-    // Scale by MAP_RESOLUTION
-    target_point.x *= explorer_.MAP_RESOLUTION;
-    target_point.y *= explorer_.MAP_RESOLUTION;
 
     RCLCPP_INFO(this->get_logger(), "Map Target: (%f, %f)", target_point.x, target_point.y);
 
@@ -153,7 +128,7 @@ private:
   bool is_not_started_ = true;
 
   bool has_started_exploration_ = false;
-  trajectory_opt::TargetSmoother target_smoother_{0.5};
+  map_navigation::TargetSelector target_selector_;
 
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_cam_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr position_sub_;

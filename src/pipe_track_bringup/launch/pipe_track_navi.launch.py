@@ -20,11 +20,21 @@ def generate_launch_description():
             parameters=[config_file, {
                 'holoocean_config_path': holo_config_file}]
         ),
+        # Node(
+        #     package='pipe_track_control',
+        #     executable='waypoint_control_node',
+        #     name='waypoint_control_node',
+        #     parameters=[config_file]
+        # ),
         Node(
             package='pipe_track_control',
-            executable='waypoint_control_node',
-            name='waypoint_control_node',
-            parameters=[config_file]
+            executable='dlqr_control_node',
+            name='dlqr_control_node',
+            parameters=[config_file, {
+                'waypoint_coordinates': 'world',
+                'control_mode': 'state',
+                'waypoint_cruise_speed': 2.0,
+            }]
         ),
         Node(
             package='pipe_track_perception',
@@ -50,12 +60,12 @@ def generate_launch_description():
             name='evaluation_system',
             parameters=[config_file]
         ),
-        # Node(
-        #     package='pipe_track_vo',
-        #     executable='vo_node',
-        #     name='vo_node',
-        #     parameters=[config_file]
-        # ),
+        Node(
+            package='pipe_track_vo',
+            executable='vo_node',
+            name='vo_node',
+            parameters=[config_file]
+        ),
         Node(
             package='pipe_track_estimation',
             executable='estimation_node',

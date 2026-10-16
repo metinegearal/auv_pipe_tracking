@@ -24,7 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'evaluation_system = pipe_track_evaluation.evaluation_system:main'
+            'evaluation_system = pipe_track_evaluation.evaluation_system:main',
         ],
     },
 )

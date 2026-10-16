@@ -8,6 +8,7 @@
   <license>MIT</license>
 
   <exec_depend>pipe_track_control</exec_depend>
+  <exec_depend>pipe_track_evaluation</exec_depend>
   <exec_depend>pipe_track_perception</exec_depend>
   <exec_depend>pipe_track_planning</exec_depend>
   <exec_depend>pipe_track_sim</exec_depend>

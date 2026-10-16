@@ -6,6 +6,8 @@ from geometry_msgs.msg import PointStamped
 import matplotlib.pyplot as plt
 from nav_msgs.msg import Odometry
 import numpy as np
+from pipe_track_evaluation.dlqr_evaluation import DlqrEvaluation
+from pipe_track_evaluation.metrics_reporting import MetricsReporting
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, MagneticField
@@ -30,6 +32,7 @@ class MetricsNode(Node):
         )
         self.results_dir = self.get_parameter('results_dir').value
         os.makedirs(self.results_dir, exist_ok=True)
+        self.dlqr_evaluation = DlqrEvaluation(self, self.results_dir)
 
         # Topic Subscriptions
         self.sub_gt = self.create_subscription(
@@ -72,6 +75,7 @@ class MetricsNode(Node):
         self.rel_time = 0.0
         self.prev_pos = (0.0, 0.0)
         self.is_finished = False
+        self.metrics_reporting = MetricsReporting(self)
 
         self.get_logger().info('✅ Metrics Evaluation Node Started.')
 
@@ -185,17 +189,16 @@ class MetricsNode(Node):
 
     def finish_cb(self, msg: Bool):
         if msg.data and not self.is_finished:
-            self.is_finished = True
             self.get_logger().info('🏁 Mission complete received. Evaluating...')
-            self.evaluate_and_plot()
+            self.metrics_reporting.finish()
 
     # ------------------------------------------------------------------
     # Metrics Evaluation & Plot Generation
     # ------------------------------------------------------------------
-    def evaluate_and_plot(self):
+    def evaluate_and_plot(self, generate_plots=True):
         if not self.gt_positions:
             self.get_logger().warn('No trajectory data recorded to evaluate!')
-            return
+            return False
 
         ctes = np.array(self.cross_track_errors)
         speeds = np.array(self.speeds)
@@ -218,6 +221,7 @@ class MetricsNode(Node):
         total_time = self.timestamps[-1] if self.timestamps else 0.0
 
         # estimation vs gt position error
+        estimation_summary = 'N/A (no estimator samples)'
         if self.est_positions and self.gt_positions:
             # Align arrays to the shortest length for 1:1 comparison
             min_len = min(len(self.gt_positions), len(self.est_positions))
@@ -228,6 +232,7 @@ class MetricsNode(Node):
             est_errors = np.linalg.norm(gt_arr - est_arr, axis=1)
             rmse_estimation = float(np.sqrt(np.mean(est_errors ** 2)))
             max_est_error = float(np.max(est_errors))
+            estimation_summary = f'{rmse_estimation:.3f} m (Max: {max_est_error:.3f} m)'
 
         # Calculate Latencies
         avg_perception = (
@@ -246,7 +251,7 @@ class MetricsNode(Node):
             f'{std_speed:.3f} m/s\n'
             f'4. Mean Heading Error         : {mean_heading_err:.2f} deg\n'
             f'5. Terminal Position Error    : {terminal_error:.3f} m\n'
-            f'6. Est. vs GT RMSE: {rmse_estimation:.3f} m (Max: {max_est_error:.3f} m)'
+            f'6. Est. vs GT RMSE: {estimation_summary}\n'
             '---------------------------------------------------------\n'
             f'   Avg Perception Latency     : {avg_perception:.1f} ms\n'
             f'   Avg Planning Latency       : {avg_planning:.1f} ms\n'
@@ -256,11 +261,13 @@ class MetricsNode(Node):
         )
 
         # Output to console and save to text file
-        self.get_logger().info(f'\n{report}')
+        if generate_plots:
+            self.get_logger().info(f'\n{report}')
         report_path = os.path.join(self.results_dir, 'metrics_summary.txt')
         with open(report_path, 'w') as f:
             f.write(report)
-        self.get_logger().info(f'📄 Summary saved to: {report_path}')
+        if generate_plots:
+            self.get_logger().info(f'📄 Summary saved to: {report_path}')
 
         # Save time-series data to CSV
         csv_path = os.path.join(self.results_dir, 'time_series_data.csv')
@@ -279,9 +286,10 @@ class MetricsNode(Node):
                     self.speeds[i],
                     self.heading_errors_deg[i]
                 ])
-        self.get_logger().info(f'💾 Raw data saved to: {csv_path}')
-
-        self.generate_academic_plots(rmse_cte, max_cte, terminal_error, mean_speed)
+        if generate_plots:
+            self.get_logger().info(f'💾 Raw data saved to: {csv_path}')
+            self.generate_academic_plots(rmse_cte, max_cte, terminal_error, mean_speed)
+        return True
 
     def generate_academic_plots(self, rmse_cte, max_cte, terminal_err, mean_speed):
         plot_style = (
@@ -358,8 +366,7 @@ def main(args=None):
         rclpy.spin(node)
     except KeyboardInterrupt:
         node.get_logger().info('Keyboard interrupt detected. Computing final metrics...')
-        if not node.is_finished:
-            node.evaluate_and_plot()
+        node.metrics_reporting.finish()
     finally:
         node.destroy_node()
         rclpy.shutdown()

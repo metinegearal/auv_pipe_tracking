@@ -114,7 +114,7 @@ void EstimationNode::dvl_callback(const geometry_msgs::msg::TwistStamped::Shared
 
 void EstimationNode::vo_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 {
-  return;  // VO is currently disabled in this implementation
+  // return;  // VO is currently disabled in this implementation
 
   auto pos = msg->pose.pose.position;
   auto ori = msg->pose.pose.orientation;

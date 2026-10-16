@@ -17,6 +17,18 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(rcl_interfaces REQUIRED)
+
+add_executable(dlqr_control_node src/dlqr_control_node.cpp)
+ament_target_dependencies(dlqr_control_node
+  rclcpp rcl_interfaces geometry_msgs nav_msgs sensor_msgs std_msgs)
+target_link_libraries(dlqr_control_node Eigen3::Eigen nlohmann_json::nlohmann_json)
+target_compile_features(dlqr_control_node PRIVATE cxx_std_17)
+
+install(TARGETS dlqr_control_node
+  DESTINATION lib/${PROJECT_NAME})
 
 add_executable(waypoint_control_node src/waypoint_control_node.cpp)
 ament_target_dependencies(waypoint_control_node 

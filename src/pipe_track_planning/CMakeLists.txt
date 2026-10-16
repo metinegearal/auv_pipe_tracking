@@ -68,6 +68,12 @@ if(BUILD_TESTING)
   set(ament_cmake_copyright_FOUND TRUE)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+
+  add_executable(test_map_target test/test_map_target.cpp)
+  target_include_directories(test_map_target PRIVATE src ${OpenCV_INCLUDE_DIRS})
+  target_link_libraries(test_map_target ${OpenCV_LIBRARIES})
+  target_compile_features(test_map_target PRIVATE cxx_std_17)
+  add_test(NAME map_target_coordinates COMMAND test_map_target)
 endif()
 
 ament_package()
